@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: container-seal-ocr
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /health/live
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: APP_ENV
+        value: prod
+      - key: SEAL_DETECTOR_MODEL
+        value: models/seal-detector-v1/best.onnx
+      - key: RECOGNITION_MODEL_DIR
+        value: models/seal-ocr-rec-v1
+      - key: MODEL_VERSION
+        value: seal-ocr-det-v1-rec-v1
+      - key: PADDLE_PDX_CACHE_HOME
+        value: /tmp/paddlex-cache
