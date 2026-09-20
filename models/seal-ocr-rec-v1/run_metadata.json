@@ -1,0 +1,8 @@
+{
+  "modelVersion": "seal-ocr-rec-v1",
+  "experiment": "primary",
+  "spacingProbability": 0.35,
+  "datasetSha256": "2929aee11ac522d1430abc6128207adb1989fe269745aa5a7bb890b416685917",
+  "seed": 20260919,
+  "epochs": 60
+}

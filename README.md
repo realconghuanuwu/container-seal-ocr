@@ -10,17 +10,14 @@ Build the image from this directory:
 docker build -t seal-ocr:det-v1-rec-v1 .
 ```
 
-The model binaries are intentionally not stored in Git. Restore `models/seal-detector-v1/best.onnx` and the Paddle inference files under `models/seal-ocr-rec-v1/`, then start the service:
+Production models (`models/seal-detector-v1/best.onnx` and `models/seal-ocr-rec-v1/`) are tracked directly via Git LFS and ready to use out-of-the-box upon `git clone`.
+
+Start the service:
 
 ```powershell
 docker stop seal-ocr-local 2>$null
 docker run -d --rm --name seal-ocr-local `
-  -p 127.0.0.1:8000:8000 `
-  -v "${PWD}/models/seal-detector-v1:/models/seal-detector-v1:ro" `
-  -v "${PWD}/models/seal-ocr-rec-v1:/models/seal-ocr-rec-v1:ro" `
-  -e SEAL_DETECTOR_MODEL=/models/seal-detector-v1/best.onnx `
-  -e RECOGNITION_MODEL_DIR=/models/seal-ocr-rec-v1 `
-  -e MODEL_VERSION=seal-ocr-det-v1-rec-v1 `
+  -p 127.0.0.1:8000:7860 `
   seal-ocr:det-v1-rec-v1
 ```
 
