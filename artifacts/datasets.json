@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-09-19",
+  "archiveRoot": "data/archive/ocr-service-artifacts/2026-09-19",
+  "preCleanupCommit": "37bc31816b9c9f29bb13e403272cdd370658c1ca",
+  "recoveryBundle": {
+    "file": "ocr-service-before-cleanup.bundle",
+    "sha256": "879841f9ba438c6dac710fcf6d90cfea558925ced35f6b5c2ef964b59c0425be"
+  },
+  "archives": [
+    {
+      "file": "training_source.zip",
+      "source": "training_source/",
+      "fileCount": 304,
+      "sha256": "2344a8f99e057774118899cc6d5ffb1f9105e94e47b166aaf7ec21e22bc5a7a3"
+    },
+    {
+      "file": "recognition_dataset_v1.zip",
+      "source": "recognition_dataset/",
+      "fileCount": 297,
+      "sha256": "82473530ea9bceb954d429de060c0b97e5c09496faad9aee248ce90a2e38e1ae"
+    },
+    {
+      "file": "recognition_dataset_v2.zip",
+      "source": "recognition_dataset_v2/",
+      "fileCount": 5008,
+      "verifiedLabels": 5000,
+      "datasetSha256": "008e3e685abe00e82e8079427f6933911dd073d56968e3082fd912e42686a807",
+      "sha256": "3b12829b22af71b58ff439c72632bc59a7920923d27a11735b2eacb8789aaad3"
+    },
+    {
+      "file": "recognition_dataset_v2_work.zip",
+      "source": "recognition_dataset_v2_work/",
+      "fileCount": 9331,
+      "verifiedReviewDecisions": 5190,
+      "sha256": "4cd29cacdc702cc4271283b0f7533e55f1d839c552dd32628bea04221788ee34"
+    },
+    {
+      "file": "reports_legacy.zip",
+      "source": "reports/",
+      "fileCount": 117,
+      "sha256": "1dcb8203a090f7a35c2c85f931f4f375131c7ea0040754f95e1feb22da0ff941"
+    },
+    {
+      "file": "models_legacy.zip",
+      "source": "models/",
+      "fileCount": 17,
+      "sha256": "3068c9e6abd894475a2132fce6455f2153cd00a6fdc508a5ade2ba09c4186e93"
+    }
+  ]
+}

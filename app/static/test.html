@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seal OCR Test</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #10241e;
+      --muted: #40574d;
+      --paper: #dfe7e3;
+      --panel: #f8faf9;
+      --line: #b8c7c0;
+      --accent: #176c4c;
+      --accent-dark: #0d5138;
+      --danger: #a43b2d;
+      --warning: #8c5b12;
+      --focus: #2179c9;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Trebuchet MS", Tahoma, sans-serif;
+      line-height: 1.5;
+    }
+
+    ::selection { background: #acd9c7; color: #10231a; }
+
+    button, input { font: inherit; }
+
+    button:focus-visible, input:focus-visible, label:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 3px;
+    }
+
+    .shell {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 40px 0 56px;
+    }
+
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 680px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(2.4rem, 6vw, 5rem);
+      font-weight: 500;
+      letter-spacing: -0.035em;
+      line-height: .92;
+    }
+
+    .intro {
+      max-width: 54ch;
+      margin: 16px 0 0;
+      color: var(--muted);
+    }
+
+    .health {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      flex: 0 0 auto;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: .875rem;
+      font-weight: 700;
+    }
+
+    .health-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--warning);
+    }
+
+    .health.ready .health-dot { background: var(--accent); }
+    .health.error .health-dot { background: var(--danger); }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding: 14px 20px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      box-shadow: 0 4px 14px rgba(39, 45, 41, .05);
+    }
+
+    .model-picker {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .model-picker label {
+      font-size: .88rem;
+      color: var(--muted);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .select-wrap {
+      position: relative;
+      display: inline-block;
+    }
+
+    select#modelSelect {
+      appearance: none;
+      -webkit-appearance: none;
+      padding: 8px 34px 8px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #e6ece9 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2340574d' d='M6 8L0 0h12z'/%3E%3C/svg%3E") no-repeat right 12px center;
+      color: var(--ink);
+      font-size: .88rem;
+      font-weight: 700;
+      cursor: pointer;
+      min-width: 250px;
+      transition: border-color .18s, background-color .18s;
+    }
+
+    select#modelSelect:hover:not(:disabled) {
+      border-color: var(--accent);
+      background-color: #dfede6;
+    }
+
+    select#modelSelect:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
+
+    .switch-status {
+      font-size: .84rem;
+      font-weight: 600;
+      color: var(--muted);
+      min-height: 20px;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .switch-status.switching { color: var(--warning); font-weight: 700; }
+    .switch-status.success { color: var(--accent); font-weight: 700; }
+    .switch-status.error { color: var(--danger); font-weight: 700; }
+
+    .feature-toggles {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .toggle-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 12px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: #eaf0ec;
+      color: var(--ink);
+      font-size: .82rem;
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+      transition: all .18s ease-out;
+    }
+
+    .toggle-chip:hover {
+      border-color: var(--accent);
+      background: #dfece5;
+    }
+
+    .toggle-chip input {
+      accent-color: var(--accent);
+      width: 15px;
+      height: 15px;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr);
+      min-height: 590px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+      box-shadow: 0 18px 45px rgba(39, 45, 41, .11);
+    }
+
+    .upload-pane, .result-pane { padding: clamp(24px, 4vw, 42px); }
+    .result-pane {
+      padding: clamp(24px, 4vw, 42px);
+      border-left: 1px solid var(--line);
+      background: #d7e2dd;
+    }
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 1.1rem;
+      letter-spacing: -.01em;
+    }
+
+    .hint { margin: 0 0 20px; color: var(--muted); font-size: .92rem; }
+
+    .dropzone {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 350px;
+      overflow: hidden;
+      border: 1px dashed #8a968e;
+      border-radius: 14px;
+      background: #e6ece9;
+      cursor: pointer;
+      transition: border-color .18s ease-out, background .18s ease-out, transform .18s ease-out;
+    }
+
+    .dropzone:hover, .dropzone.dragging { border-color: var(--accent); background: #e6eee8; }
+    .dropzone.dragging { transform: scale(.995); }
+
+    .dropzone input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      opacity: 0;
+    }
+
+    .empty { max-width: 300px; padding: 24px; text-align: center; color: var(--muted); }
+    .empty strong { display: block; margin-bottom: 7px; color: var(--ink); font-size: 1.05rem; }
+
+    .preview {
+      display: none;
+      width: 100%;
+      height: 350px;
+      min-height: 350px;
+      background: #242a26;
+    }
+
+    .viewer-tools {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .viewer-tools button { min-height: 36px; padding: 6px 11px; }
+    .viewer-tools input { width: min(180px, 35vw); accent-color: var(--accent); }
+    .zoom-value { min-width: 46px; color: var(--muted); font-size: .84rem; }
+
+    .file-meta {
+      min-height: 24px;
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: .84rem;
+      overflow-wrap: anywhere;
+    }
+
+    .actions { display: flex; gap: 10px; margin-top: 18px; }
+
+    .button {
+      min-height: 46px;
+      padding: 11px 18px;
+      border: 0;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 750;
+      transition: background .18s ease-out, transform .18s ease-out;
+    }
+
+    .button:hover:not(:disabled) { transform: translateY(-1px); }
+    .button:disabled { cursor: not-allowed; opacity: .48; }
+    .primary { flex: 1; background: var(--accent); color: white; }
+    .primary:hover:not(:disabled) { background: var(--accent-dark); }
+    .secondary { border: 1px solid var(--line); background: transparent; color: var(--ink); }
+
+    .result-empty { margin: 80px 0 0; color: var(--muted); }
+    .result-empty p { max-width: 34ch; }
+
+    .result { display: none; }
+    .status {
+      display: inline-flex;
+      padding: 5px 9px;
+      border-radius: 7px;
+      background: var(--ink);
+      color: white;
+      font-size: .75rem;
+      font-weight: 800;
+      letter-spacing: .06em;
+    }
+
+    .status.success { background: var(--accent); }
+    .status.review { background: var(--warning); }
+    .status.error, .status.recapture { background: var(--danger); }
+
+    .seal-number {
+      margin: 24px 0 30px;
+      font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+      font-size: clamp(1.8rem, 4vw, 3.3rem);
+      font-weight: 800;
+      letter-spacing: .04em;
+      line-height: 1.1;
+      overflow-wrap: anywhere;
+    }
+
+    dl { display: grid; grid-template-columns: 130px 1fr; gap: 11px 16px; margin: 0; }
+    dt { color: var(--muted); }
+    dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+
+    details { margin-top: 32px; border-top: 1px solid var(--line); padding-top: 18px; }
+    summary { cursor: pointer; color: var(--muted); font-weight: 700; }
+    pre {
+      max-height: 260px;
+      margin: 14px 0 0;
+      padding: 14px;
+      overflow: auto;
+      border-radius: 10px;
+      background: #202722;
+      color: #e8f0eb;
+      font: .78rem/1.55 ui-monospace, "SFMono-Regular", Consolas, monospace;
+      white-space: pre-wrap;
+    }
+
+    .loading-label { display: none; }
+    .loading .default-label { display: none; }
+    .loading .loading-label { display: inline; }
+
+    @media (max-width: 780px) {
+      .shell { width: min(100% - 20px, 620px); padding-top: 24px; }
+      header { align-items: flex-start; flex-direction: column; }
+      main { grid-template-columns: 1fr; }
+      .result-pane { min-height: 390px; border-top: 1px solid var(--line); border-left: 0; }
+      .dropzone, .preview { min-height: 280px; }
+      .preview { height: 280px; }
+      .result-empty { margin-top: 34px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <h1>Đọc số seal từ ảnh</h1>
+        <p class="intro">Tải ảnh cận cảnh seal container để kiểm tra trực tiếp pipeline PP-OCRv6 đang chạy trong service.</p>
+      </div>
+      <div class="health" id="health" role="status" aria-live="polite">
+        <span class="health-dot" aria-hidden="true"></span>
+        <span id="healthText">Đang kiểm tra model…</span>
+      </div>
+    </header>
+
+    <section class="toolbar" aria-label="Cấu hình mô hình và pipeline">
+      <div class="model-picker">
+        <label for="modelSelect"><strong>Mô hình OCR:</strong></label>
+        <div class="select-wrap">
+          <select id="modelSelect" aria-label="Chọn mô hình OCR">
+            <option value="">Đang tải danh sách model…</option>
+          </select>
+        </div>
+        <span id="modelSwitchStatus" class="switch-status" aria-live="polite"></span>
+      </div>
+      <div class="feature-toggles">
+        <label class="toggle-chip" title="Bật/tắt YOLO Seal Detector định vị và cắt box chứa mã seal">
+          <input type="checkbox" id="toggleDetector" checked>
+          <span>YOLO Detector</span>
+        </label>
+        <label class="toggle-chip" title="Bật/tắt giải mã Barcode/QR Code ưu tiên">
+          <input type="checkbox" id="toggleBarcode" checked>
+          <span>Barcode Fast-Path</span>
+        </label>
+        <label class="toggle-chip" title="Bật/tắt xoay đa hướng & TTA chống CTC collapse">
+          <input type="checkbox" id="toggleTta" checked>
+          <span>Multi-angle & TTA</span>
+        </label>
+      </div>
+    </section>
+
+    <main>
+      <section class="upload-pane" aria-labelledby="uploadTitle">
+        <h2 id="uploadTitle">Ảnh seal</h2>
+        <p class="hint">JPEG, PNG hoặc WEBP · tối đa 10 MB</p>
+        <label class="dropzone" id="dropzone" tabindex="0">
+          <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp">
+          <span class="empty" id="emptyPreview">
+            <strong>Chọn hoặc thả ảnh vào đây</strong>
+            Ảnh rõ, đủ sáng và chỉ chứa vùng seal sẽ cho kết quả tốt hơn.
+          </span>
+          <canvas class="preview" id="preview" aria-label="Ảnh seal và vùng detector"></canvas>
+        </label>
+        <div class="viewer-tools" id="viewerTools">
+          <button class="button secondary" id="rotateLeft" type="button" title="Xoay trái 90°">↶ 90°</button>
+          <button class="button secondary" id="rotateRight" type="button" title="Xoay phải 90°">↷ 90°</button>
+          <input id="zoom" type="range" min="0.5" max="4" value="1" step="0.1" aria-label="Mức zoom">
+          <span class="zoom-value" id="zoomValue">100%</span>
+          <button class="button secondary" id="resetView" type="button">Reset</button>
+        </div>
+        <p class="file-meta" id="fileMeta" aria-live="polite">Chưa chọn ảnh</p>
+        <div class="actions">
+          <button class="button secondary" id="clearButton" type="button" disabled>Xóa ảnh</button>
+          <button class="button primary" id="submitButton" type="button" disabled>
+            <span class="default-label">Đọc số seal</span>
+            <span class="loading-label">Đang xử lý…</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="result-pane" aria-labelledby="resultTitle">
+        <h2 id="resultTitle">Kết quả</h2>
+        <div class="result-empty" id="resultEmpty">
+          <p>Kết quả nhận dạng, độ tin cậy và thời gian xử lý sẽ xuất hiện tại đây.</p>
+        </div>
+        <div class="result" id="result" aria-live="polite">
+          <span class="status" id="status"></span>
+          <p class="seal-number" id="sealNumber">Chưa có</p>
+          <dl>
+            <dt>Raw text</dt><dd id="rawText">Chưa có</dd>
+            <dt>Confidence</dt><dd id="confidence">Chưa có</dd>
+            <dt>Nguồn</dt><dd id="source">Chưa có</dd>
+            <dt>Thời gian</dt><dd id="processingTime">Chưa có</dd>
+            <dt>Model</dt><dd id="modelVersion">Chưa có</dd>
+            <dt>Cấu hình</dt><dd id="runConfig">Mặc định</dd>
+            <dt>Detector</dt><dd id="detectionCount">Chưa chạy</dd>
+            <dt>Lý do</dt><dd id="reason">Chưa có</dd>
+            <dt>Request ID</dt><dd id="requestId">Chưa có</dd>
+          </dl>
+          <details>
+            <summary>Xem JSON response</summary>
+            <pre id="jsonOutput"></pre>
+          </details>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const fileInput = document.querySelector('#fileInput');
+    const dropzone = document.querySelector('#dropzone');
+    const preview = document.querySelector('#preview');
+    const emptyPreview = document.querySelector('#emptyPreview');
+    const fileMeta = document.querySelector('#fileMeta');
+    const clearButton = document.querySelector('#clearButton');
+    const submitButton = document.querySelector('#submitButton');
+    const viewerTools = document.querySelector('#viewerTools');
+    const zoomInput = document.querySelector('#zoom');
+    const zoomValue = document.querySelector('#zoomValue');
+    const result = document.querySelector('#result');
+    const resultEmpty = document.querySelector('#resultEmpty');
+    let selectedFile = null;
+    let previewUrl = null;
+    let previewImage = null;
+    let rotation = 0;
+    let zoom = 1;
+    let detections = [];
+    let detectedImageWidth = null;
+    let detectedImageHeight = null;
+
+    const formatBytes = bytes => bytes < 1024 * 1024
+      ? `${(bytes / 1024).toFixed(1)} KB`
+      : `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+
+    function drawPreview() {
+      if (!previewImage) return;
+      const width = preview.clientWidth;
+      const height = preview.clientHeight;
+      const pixelRatio = window.devicePixelRatio || 1;
+      preview.width = Math.round(width * pixelRatio);
+      preview.height = Math.round(height * pixelRatio);
+      const context = preview.getContext('2d');
+      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      context.fillStyle = '#242a26';
+      context.fillRect(0, 0, width, height);
+
+      const quarterTurn = Math.abs(rotation / 90) % 2;
+      const sourceWidth = previewImage.naturalWidth;
+      const sourceHeight = previewImage.naturalHeight;
+      const fit = Math.min(
+        width / (quarterTurn ? sourceHeight : sourceWidth),
+        height / (quarterTurn ? sourceWidth : sourceHeight),
+      );
+      const scale = fit * zoom;
+      context.translate(width / 2, height / 2);
+      context.rotate(rotation * Math.PI / 180);
+      context.scale(scale, scale);
+      context.translate(-sourceWidth / 2, -sourceHeight / 2);
+      context.drawImage(previewImage, 0, 0);
+
+      const ratioX = detectedImageWidth ? sourceWidth / detectedImageWidth : 1;
+      const ratioY = detectedImageHeight ? sourceHeight / detectedImageHeight : 1;
+      context.lineWidth = 3 / scale;
+      context.strokeStyle = '#ff3b30';
+      context.fillStyle = '#ff3b30';
+      context.font = `bold ${14 / scale}px ui-monospace, monospace`;
+      detections.forEach((box, index) => {
+        const x = box.x * ratioX;
+        const y = box.y * ratioY;
+        const boxWidth = box.width * ratioX;
+        const boxHeight = box.height * ratioY;
+        context.strokeRect(x, y, boxWidth, boxHeight);
+        context.fillText(`#${index + 1} ${(box.confidence * 100).toFixed(1)}%`, x, Math.max(14 / scale, y - 5 / scale));
+      });
+    }
+
+    function setView(nextRotation = rotation, nextZoom = zoom) {
+      rotation = nextRotation;
+      zoom = Math.min(4, Math.max(.5, nextZoom));
+      zoomInput.value = zoom;
+      zoomValue.textContent = `${Math.round(zoom * 100)}%`;
+      drawPreview();
+    }
+
+    function setFile(file) {
+      if (!file) return clearFile();
+      selectedFile = file;
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = URL.createObjectURL(file);
+      previewImage = new Image();
+      previewImage.onload = drawPreview;
+      previewImage.src = previewUrl;
+      preview.style.display = 'block';
+      viewerTools.style.display = 'flex';
+      emptyPreview.style.display = 'none';
+      detections = [];
+      detectedImageWidth = null;
+      detectedImageHeight = null;
+      setView(0, 1);
+      fileMeta.textContent = `${file.name} · ${formatBytes(file.size)}`;
+      clearButton.disabled = false;
+      submitButton.disabled = false;
+    }
+
+    function clearFile() {
+      selectedFile = null;
+      fileInput.value = '';
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = null;
+      previewImage = null;
+      detections = [];
+      preview.style.display = 'none';
+      viewerTools.style.display = 'none';
+      emptyPreview.style.display = 'block';
+      fileMeta.textContent = 'Chưa chọn ảnh';
+      clearButton.disabled = true;
+      submitButton.disabled = true;
+    }
+
+    const modelSelect = document.querySelector('#modelSelect');
+    const modelSwitchStatus = document.querySelector('#modelSwitchStatus');
+    const toggleDetector = document.querySelector('#toggleDetector');
+    const toggleBarcode = document.querySelector('#toggleBarcode');
+    const toggleTta = document.querySelector('#toggleTta');
+    let availableModels = [];
+    let isSwitchingModel = false;
+
+    function text(id, value, fallback = 'Chưa có') {
+      document.querySelector(`#${id}`).textContent = value ?? fallback;
+    }
+
+    function showResult(data, requestId) {
+      resultEmpty.style.display = 'none';
+      result.style.display = 'block';
+      const status = document.querySelector('#status');
+      status.textContent = data.status || 'ERROR';
+      status.className = `status ${(data.status || 'ERROR').toLowerCase()}`;
+      text('sealNumber', data.sealNumber);
+      text('rawText', data.rawText);
+      text('confidence', data.confidence == null ? null : `${(data.confidence * 100).toFixed(2)}%`);
+      text('source', data.source);
+      text('processingTime', data.processingTimeMs == null ? null : `${data.processingTimeMs} ms`);
+      text('modelVersion', data.modelVersion);
+      const runCfg = [
+        `YOLO: ${toggleDetector.checked ? 'Bật' : 'Tắt'}`,
+        `Barcode: ${toggleBarcode.checked ? 'Bật' : 'Tắt'}`,
+        `TTA: ${toggleTta.checked ? 'Bật' : 'Tắt'}`,
+      ].join(' · ');
+      text('runConfig', runCfg);
+      detections = data.detections || [];
+      detectedImageWidth = data.imageWidth;
+      detectedImageHeight = data.imageHeight;
+      text('detectionCount', `${detections.length} vùng`);
+      drawPreview();
+      text('reason', data.reason);
+      text('requestId', requestId);
+      document.querySelector('#jsonOutput').textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function checkHealth() {
+      const health = document.querySelector('#health');
+      const healthText = document.querySelector('#healthText');
+      try {
+        const response = await fetch('/health/ready', { cache: 'no-store' });
+        const envTag = data.environment ? ` [${data.environment.toUpperCase()}]` : '';
+        healthText.textContent = response.ok ? `Model sẵn sàng · ${data.modelVersion}${envTag}` : 'Model đang khởi động';
+      } catch {
+        health.className = 'health error';
+        healthText.textContent = 'Không kết nối được service';
+      }
+    }
+
+    async function loadModels() {
+      try {
+        const response = await fetch('/api/v1/models', { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = await response.json();
+        availableModels = data.models || [];
+        modelSelect.innerHTML = '';
+        availableModels.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.id;
+          opt.textContent = `${m.name} (${m.type})`;
+          if (m.is_active) {
+            opt.selected = true;
+          }
+          modelSelect.appendChild(opt);
+        });
+      } catch (err) {
+        console.warn('Failed to load models list', err);
+      }
+    }
+
+    modelSelect.addEventListener('change', async () => {
+      const selectedId = modelSelect.value;
+      if (!selectedId || isSwitchingModel) return;
+
+      isSwitchingModel = true;
+      modelSelect.disabled = true;
+      submitButton.disabled = true;
+      modelSwitchStatus.className = 'switch-status switching';
+      modelSwitchStatus.textContent = '⏳ Đang khởi tạo model…';
+
+      try {
+        const response = await fetch(`/api/v1/models/switch?model_id=${encodeURIComponent(selectedId)}`, {
+          method: 'POST',
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.message || `HTTP ${response.status}`);
+        }
+
+        let attempts = 0;
+        const poll = setInterval(async () => {
+          attempts++;
+          try {
+            const hRes = await fetch('/health/ready', { cache: 'no-store' });
+            if (hRes.ok) {
+              const hData = await hRes.json();
+              clearInterval(poll);
+              modelSwitchStatus.className = 'switch-status success';
+              modelSwitchStatus.textContent = `✓ Đã chuyển sang: ${hData.modelVersion}`;
+              isSwitchingModel = false;
+              modelSelect.disabled = false;
+              if (selectedFile) submitButton.disabled = false;
+              checkHealth();
+              setTimeout(() => {
+                if (modelSwitchStatus.className.includes('success')) {
+                  modelSwitchStatus.textContent = '';
+                }
+              }, 4000);
+              return;
+            }
+          } catch {}
+          if (attempts >= 30) {
+            clearInterval(poll);
+            modelSwitchStatus.className = 'switch-status error';
+            modelSwitchStatus.textContent = '⚠️ Khởi tạo lâu hơn dự kiến';
+            isSwitchingModel = false;
+            modelSelect.disabled = false;
+            if (selectedFile) submitButton.disabled = false;
+            checkHealth();
+          }
+        }, 500);
+      } catch (err) {
+        modelSwitchStatus.className = 'switch-status error';
+        modelSwitchStatus.textContent = `❌ ${err.message}`;
+        isSwitchingModel = false;
+        modelSelect.disabled = false;
+        if (selectedFile) submitButton.disabled = false;
+        loadModels();
+      }
+    });
+
+    async function submit() {
+      if (!selectedFile) return;
+      submitButton.disabled = true;
+      clearButton.disabled = true;
+      submitButton.classList.add('loading');
+      const form = new FormData();
+      form.append('file', selectedFile);
+
+      const queryParams = new URLSearchParams({
+        enable_detector: toggleDetector.checked,
+        enable_barcode: toggleBarcode.checked,
+        enable_tta: toggleTta.checked,
+      });
+
+      try {
+        const response = await fetch(`/api/v1/ocr/seal?${queryParams.toString()}`, { method: 'POST', body: form });
+        const requestId = response.headers.get('x-request-id');
+        let data;
+        try {
+          data = await response.json();
+        } catch {
+          data = { status: 'ERROR', reason: `HTTP_${response.status}`, rawText: 'Response không phải JSON' };
+        }
+        showResult(data, requestId);
+      } catch (error) {
+        showResult({ status: 'ERROR', reason: 'NETWORK_ERROR', rawText: error.message }, null);
+      } finally {
+        submitButton.classList.remove('loading');
+        submitButton.disabled = false;
+        clearButton.disabled = false;
+        checkHealth();
+      }
+    }
+
+    fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
+    clearButton.addEventListener('click', clearFile);
+    submitButton.addEventListener('click', submit);
+    document.querySelector('#rotateLeft').addEventListener('click', () => setView(rotation - 90));
+    document.querySelector('#rotateRight').addEventListener('click', () => setView(rotation + 90));
+    document.querySelector('#resetView').addEventListener('click', () => setView(0, 1));
+    zoomInput.addEventListener('input', () => setView(rotation, Number(zoomInput.value)));
+    preview.addEventListener('wheel', event => {
+      event.preventDefault();
+      setView(rotation, zoom + (event.deltaY < 0 ? .1 : -.1));
+    }, { passive: false });
+    window.addEventListener('resize', drawPreview);
+    dropzone.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        fileInput.click();
+      }
+    });
+    ['dragenter', 'dragover'].forEach(type => dropzone.addEventListener(type, event => {
+      event.preventDefault();
+      dropzone.classList.add('dragging');
+    }));
+    ['dragleave', 'drop'].forEach(type => dropzone.addEventListener(type, event => {
+      event.preventDefault();
+      dropzone.classList.remove('dragging');
+    }));
+    dropzone.addEventListener('drop', event => setFile(event.dataTransfer.files[0]));
+
+    checkHealth();
+    loadModels();
+  </script>
+</body>
+</html>
