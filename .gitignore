@@ -16,3 +16,9 @@ reports/
 *.bak
 benchmark/.phash_cache.json
 .env
+
+# Flutter & Dart build artifacts
+.dart_tool/
+.flutter-plugins*
+.packages
+build/

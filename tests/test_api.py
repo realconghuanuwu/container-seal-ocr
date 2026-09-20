@@ -285,3 +285,25 @@ def test_environment_settings_and_readiness():
             models_res = client.get("/api/v1/models").json()
             assert models_res["environment"] == env_name
 
+
+def test_benchmark_endpoints():
+    with TestClient(create_app(worker_factory=FakeWorker)) as client:
+        # Test benchmark data endpoint
+        data_res = client.get("/api/v1/benchmark/data")
+        assert data_res.status_code == 200
+        data = data_res.json()
+        assert "items" in data
+        assert data["total"] > 0
+        assert "exactMatches" in data
+        assert "accuracyPercent" in data
+
+        first_img = data["items"][0]["image"]
+        # Test benchmark image endpoint
+        img_res = client.get(f"/api/v1/benchmark/images/{first_img}")
+        assert img_res.status_code == 200
+        assert img_res.headers["content-type"].startswith("image/")
+
+        # Test invalid image name traversal
+        bad_res = client.get("/api/v1/benchmark/images/../../etc/passwd")
+        assert bad_res.status_code in (404, 422)
+

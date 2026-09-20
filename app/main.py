@@ -1,4 +1,5 @@
 import asyncio
+import csv
 import json
 import logging
 import time
@@ -55,6 +56,7 @@ def create_app(settings: Settings | None = None, worker_factory: Callable | None
 
     app = FastAPI(title="Container Seal OCR", lifespan=lifespan)
 
+    @app.get("/", include_in_schema=False)
     @app.get("/test", include_in_schema=False)
     def test_page():
         return FileResponse(TEST_PAGE, media_type="text/html")
@@ -127,6 +129,90 @@ def create_app(settings: Settings | None = None, worker_factory: Callable | None
             "target_model": version,
             "recognition_model_dir": rec_dir,
             "message": f"Switched model to {version}. Model is initializing...",
+        }
+
+    @app.get("/api/v1/benchmark/images/{filename}", include_in_schema=False)
+    def get_benchmark_image(filename: str):
+        root = Path(__file__).resolve().parent.parent / "benchmark" / "images"
+        safe_name = Path(filename).name
+        target = (root / safe_name).resolve()
+        if not target.is_relative_to(root.resolve()) or not target.is_file():
+            return JSONResponse({"status": "error", "message": "Image not found"}, status_code=404)
+        return FileResponse(target, media_type="image/jpeg")
+
+    @app.get("/api/v1/benchmark/data")
+    def get_benchmark_data(request: Request, model_id: str | None = None):
+        root = Path(__file__).resolve().parent.parent
+        worker = request.app.state.worker
+        worker_settings = getattr(worker, "settings", settings)
+        active_version = model_id or worker_settings.model_version
+
+        is_base = "base" in (active_version or "").lower()
+        items = []
+
+        if is_base:
+            comp_csv = root / "reports" / "comparison_base_vs_seal_ocr_det_v1_rec_v3.csv"
+            if comp_csv.is_file():
+                with comp_csv.open(newline="", encoding="utf-8-sig") as f:
+                    for row in csv.DictReader(f):
+                        exact = row.get("base_exact_match", "").lower() == "true"
+                        items.append({
+                            "image": row["image"],
+                            "ground_truth": row["ground_truth"],
+                            "prediction": row.get("base_prediction", ""),
+                            "exact_match": exact,
+                            "confidence": float(row["base_confidence"]) if row.get("base_confidence") else None,
+                            "status": row.get("base_status", ""),
+                            "latency_ms": float(row["base_latency_ms"]) if row.get("base_latency_ms") else None,
+                            "image_url": f"/api/v1/benchmark/images/{row['image']}",
+                        })
+
+        if not items:
+            # Production v1 baseline
+            v1_csv = root / "baselines" / "seal-ocr-det-v1-rec-v1.csv"
+            if v1_csv.is_file():
+                with v1_csv.open(newline="", encoding="utf-8-sig") as f:
+                    for row in csv.DictReader(f):
+                        exact = row.get("exact_match", "").lower() == "true"
+                        items.append({
+                            "image": row["image"],
+                            "ground_truth": row["ground_truth"],
+                            "prediction": row.get("prediction", ""),
+                            "exact_match": exact,
+                            "confidence": float(row["confidence"]) if row.get("confidence") else None,
+                            "status": row.get("status", ""),
+                            "latency_ms": float(row["latency_ms"]) if row.get("latency_ms") else None,
+                            "image_url": f"/api/v1/benchmark/images/{row['image']}",
+                        })
+
+        if not items:
+            # Fallback to labels.csv
+            lbl_csv = root / "benchmark" / "labels.csv"
+            if lbl_csv.is_file():
+                with lbl_csv.open(newline="", encoding="utf-8-sig") as f:
+                    for row in csv.DictReader(f):
+                        items.append({
+                            "image": row["image"],
+                            "ground_truth": row["ground_truth"],
+                            "prediction": "",
+                            "exact_match": False,
+                            "confidence": None,
+                            "status": "",
+                            "latency_ms": None,
+                            "image_url": f"/api/v1/benchmark/images/{row['image']}",
+                        })
+
+        total = len(items)
+        exact_matches = sum(1 for item in items if item["exact_match"])
+        accuracy = round((exact_matches / total) * 100, 2) if total else 0.0
+
+        return {
+            "modelVersion": active_version,
+            "total": total,
+            "exactMatches": exact_matches,
+            "mismatches": total - exact_matches,
+            "accuracyPercent": accuracy,
+            "items": items,
         }
 
     @app.post("/api/v1/ocr/seal", response_model=OcrResponse)

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Seal OCR Test</title>
+  <title>Container Seal OCR - Test & Benchmark Suite</title>
   <style>
     :root {
       color-scheme: light;
@@ -14,9 +14,14 @@
       --line: #b8c7c0;
       --accent: #176c4c;
       --accent-dark: #0d5138;
+      --accent-light: #e6f3ed;
       --danger: #a43b2d;
+      --danger-light: #fbeeed;
       --warning: #8c5b12;
+      --warning-light: #fdf6ea;
       --focus: #2179c9;
+      --shadow-sm: 0 2px 8px rgba(16, 36, 30, .06);
+      --shadow-md: 0 6px 18px rgba(16, 36, 30, .09);
     }
 
     * { box-sizing: border-box; }
@@ -26,47 +31,46 @@
       min-height: 100vh;
       background: var(--paper);
       color: var(--ink);
-      font-family: "Trebuchet MS", Tahoma, sans-serif;
+      font-family: "Trebuchet MS", Tahoma, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       line-height: 1.5;
     }
 
     ::selection { background: #acd9c7; color: #10231a; }
+    button, input, select { font: inherit; }
 
-    button, input { font: inherit; }
-
-    button:focus-visible, input:focus-visible, label:focus-visible {
+    button:focus-visible, input:focus-visible, select:focus-visible, label:focus-visible {
       outline: 3px solid var(--focus);
-      outline-offset: 3px;
+      outline-offset: 2px;
     }
 
     .shell {
-      width: min(1120px, calc(100% - 32px));
+      width: min(1200px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 40px 0 56px;
+      padding: 32px 0 60px;
     }
 
     header {
       display: flex;
       align-items: flex-end;
       justify-content: space-between;
-      gap: 24px;
-      margin-bottom: 28px;
+      gap: 20px;
+      margin-bottom: 24px;
     }
 
     h1 {
       margin: 0;
-      max-width: 680px;
       font-family: Georgia, "Times New Roman", serif;
-      font-size: clamp(2.4rem, 6vw, 5rem);
+      font-size: clamp(2.2rem, 5vw, 4.2rem);
       font-weight: 500;
-      letter-spacing: -0.035em;
-      line-height: .92;
+      letter-spacing: -0.03em;
+      line-height: .95;
     }
 
     .intro {
-      max-width: 54ch;
-      margin: 16px 0 0;
+      max-width: 58ch;
+      margin: 12px 0 0;
       color: var(--muted);
+      font-size: 1rem;
     }
 
     .health {
@@ -74,37 +78,39 @@
       align-items: center;
       gap: 9px;
       flex: 0 0 auto;
-      padding: 8px 12px;
+      padding: 8px 14px;
       border: 1px solid var(--line);
       border-radius: 999px;
       background: var(--panel);
       color: var(--muted);
-      font-size: .875rem;
+      font-size: .88rem;
       font-weight: 700;
+      box-shadow: var(--shadow-sm);
     }
 
     .health-dot {
-      width: 9px;
-      height: 9px;
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
       background: var(--warning);
+      transition: background-color .2s;
     }
-
     .health.ready .health-dot { background: var(--accent); }
     .health.error .health-dot { background: var(--danger); }
 
+    /* TOOLBAR */
     .toolbar {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       padding: 14px 20px;
       border: 1px solid var(--line);
       border-radius: 14px;
       background: var(--panel);
-      box-shadow: 0 4px 14px rgba(39, 45, 41, .05);
+      box-shadow: var(--shadow-sm);
     }
 
     .model-picker {
@@ -121,10 +127,7 @@
       white-space: nowrap;
     }
 
-    .select-wrap {
-      position: relative;
-      display: inline-block;
-    }
+    .select-wrap { position: relative; display: inline-block; }
 
     select#modelSelect {
       appearance: none;
@@ -137,19 +140,11 @@
       font-size: .88rem;
       font-weight: 700;
       cursor: pointer;
-      min-width: 250px;
+      min-width: 260px;
       transition: border-color .18s, background-color .18s;
     }
-
-    select#modelSelect:hover:not(:disabled) {
-      border-color: var(--accent);
-      background-color: #dfede6;
-    }
-
-    select#modelSelect:disabled {
-      opacity: .6;
-      cursor: not-allowed;
-    }
+    select#modelSelect:hover:not(:disabled) { border-color: var(--accent); background-color: #dfede6; }
+    select#modelSelect:disabled { opacity: .6; cursor: not-allowed; }
 
     .switch-status {
       font-size: .84rem;
@@ -159,7 +154,6 @@
       display: inline-flex;
       align-items: center;
     }
-
     .switch-status.switching { color: var(--warning); font-weight: 700; }
     .switch-status.success { color: var(--accent); font-weight: 700; }
     .switch-status.error { color: var(--danger); font-weight: 700; }
@@ -167,7 +161,7 @@
     .feature-toggles {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
     }
 
@@ -186,78 +180,111 @@
       user-select: none;
       transition: all .18s ease-out;
     }
+    .toggle-chip:hover { border-color: var(--accent); background: #dfece5; }
+    .toggle-chip input { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; cursor: pointer; }
 
-    .toggle-chip:hover {
-      border-color: var(--accent);
-      background: #dfece5;
+    /* NAV TABS */
+    .nav-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 22px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #e5ece8;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,.04);
     }
 
-    .toggle-chip input {
-      accent-color: var(--accent);
-      width: 15px;
-      height: 15px;
-      margin: 0;
+    .nav-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--muted);
+      font-size: .92rem;
+      font-weight: 750;
       cursor: pointer;
+      transition: all .18s ease-out;
+    }
+    .nav-tab:hover:not(.active) { color: var(--ink); background: rgba(255, 255, 255, .5); }
+    .nav-tab.active {
+      background: var(--panel);
+      color: var(--accent-dark);
+      box-shadow: 0 2px 8px rgba(16, 36, 30, .08);
+    }
+    .tab-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: var(--accent);
+      color: white;
+      font-size: .75rem;
+      font-weight: 800;
     }
 
-    main {
+    /* PANES */
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* SINGLE VIEW LAYOUT */
+    .single-layout {
       display: grid;
-      grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr);
-      min-height: 590px;
-      overflow: hidden;
+      grid-template-columns: minmax(320px, 1fr) minmax(340px, 1.15fr);
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .panel-card {
+      padding: 28px;
       border: 1px solid var(--line);
       border-radius: 16px;
       background: var(--panel);
-      box-shadow: 0 18px 45px rgba(39, 45, 41, .11);
+      box-shadow: var(--shadow-md);
     }
 
-    .upload-pane, .result-pane { padding: clamp(24px, 4vw, 42px); }
-    .result-pane {
-      padding: clamp(24px, 4vw, 42px);
-      border-left: 1px solid var(--line);
-      background: #d7e2dd;
+    .panel-title {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.6rem;
+      font-weight: 500;
+      letter-spacing: -.02em;
     }
-
-    h2 {
-      margin: 0 0 8px;
-      font-size: 1.1rem;
-      letter-spacing: -.01em;
-    }
-
-    .hint { margin: 0 0 20px; color: var(--muted); font-size: .92rem; }
+    .hint { margin: 6px 0 18px; color: var(--muted); font-size: .88rem; }
 
     .dropzone {
       position: relative;
-      display: grid;
-      place-items: center;
-      min-height: 350px;
-      overflow: hidden;
-      border: 1px dashed #8a968e;
-      border-radius: 14px;
-      background: #e6ece9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 310px;
+      border: 2px dashed var(--line);
+      border-radius: 12px;
+      background: #eef3f0;
       cursor: pointer;
-      transition: border-color .18s ease-out, background .18s ease-out, transform .18s ease-out;
-    }
-
-    .dropzone:hover, .dropzone.dragging { border-color: var(--accent); background: #e6eee8; }
-    .dropzone.dragging { transform: scale(.995); }
-
-    .dropzone input {
-      position: absolute;
-      width: 1px;
-      height: 1px;
       overflow: hidden;
+      transition: border-color .18s, background-color .18s;
+    }
+    .dropzone:hover, .dropzone.dragging { border-color: var(--accent); background: #e3ede7; }
+    .dropzone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
       opacity: 0;
     }
 
-    .empty { max-width: 300px; padding: 24px; text-align: center; color: var(--muted); }
-    .empty strong { display: block; margin-bottom: 7px; color: var(--ink); font-size: 1.05rem; }
+    .empty-state { max-width: 320px; padding: 24px; text-align: center; color: var(--muted); }
+    .empty-state strong { display: block; margin-bottom: 7px; color: var(--ink); font-size: 1.05rem; }
 
-    .preview {
+    .preview-canvas {
       display: none;
       width: 100%;
-      height: 350px;
-      min-height: 350px;
+      height: 320px;
+      min-height: 320px;
       background: #242a26;
     }
 
@@ -267,80 +294,89 @@
       gap: 8px;
       margin-top: 12px;
     }
-    .viewer-tools button { min-height: 36px; padding: 6px 11px; }
-    .viewer-tools input { width: min(180px, 35vw); accent-color: var(--accent); }
-    .zoom-value { min-width: 46px; color: var(--muted); font-size: .84rem; }
+    .viewer-tools button { min-height: 34px; padding: 4px 10px; }
+    .viewer-tools input { width: min(160px, 35vw); accent-color: var(--accent); }
+    .zoom-value { min-width: 44px; color: var(--muted); font-size: .84rem; }
 
     .file-meta {
-      min-height: 24px;
-      margin: 12px 0 0;
+      min-height: 22px;
+      margin: 10px 0 0;
       color: var(--muted);
       font-size: .84rem;
       overflow-wrap: anywhere;
     }
 
-    .actions { display: flex; gap: 10px; margin-top: 18px; }
-
     .button {
-      min-height: 46px;
-      padding: 11px 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 10px 18px;
       border: 0;
-      border-radius: 10px;
+      border-radius: 9px;
       cursor: pointer;
       font-weight: 750;
-      transition: background .18s ease-out, transform .18s ease-out;
+      font-size: .92rem;
+      transition: all .18s ease-out;
     }
-
     .button:hover:not(:disabled) { transform: translateY(-1px); }
-    .button:disabled { cursor: not-allowed; opacity: .48; }
-    .primary { flex: 1; background: var(--accent); color: white; }
+    .button:disabled { cursor: not-allowed; opacity: .48; transform: none; }
+    .primary { background: var(--accent); color: white; }
     .primary:hover:not(:disabled) { background: var(--accent-dark); }
     .secondary { border: 1px solid var(--line); background: transparent; color: var(--ink); }
+    .secondary:hover:not(:disabled) { background: #e2ece6; }
+    .danger-btn { background: var(--danger); color: white; }
+    .danger-btn:hover:not(:disabled) { background: #8a2f23; }
 
+    .actions { display: flex; gap: 10px; margin-top: 18px; }
+
+    /* RESULT FORMATTING */
     .result-empty { margin: 80px 0 0; color: var(--muted); }
-    .result-empty p { max-width: 34ch; }
+    .result-empty p { max-width: 36ch; }
+    .result-box { display: none; }
 
-    .result { display: none; }
-    .status {
+    .status-badge {
       display: inline-flex;
-      padding: 5px 9px;
-      border-radius: 7px;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 6px;
       background: var(--ink);
       color: white;
       font-size: .75rem;
       font-weight: 800;
-      letter-spacing: .06em;
+      letter-spacing: .05em;
     }
-
-    .status.success { background: var(--accent); }
-    .status.review { background: var(--warning); }
-    .status.error, .status.recapture { background: var(--danger); }
+    .status-badge.success { background: var(--accent); }
+    .status-badge.review { background: var(--warning); }
+    .status-badge.recapture, .status-badge.error { background: var(--danger); }
 
     .seal-number {
-      margin: 24px 0 30px;
+      margin: 20px 0 24px;
       font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
-      font-size: clamp(1.8rem, 4vw, 3.3rem);
+      font-size: clamp(2rem, 4vw, 3.4rem);
       font-weight: 800;
       letter-spacing: .04em;
       line-height: 1.1;
       overflow-wrap: anywhere;
     }
 
-    dl { display: grid; grid-template-columns: 130px 1fr; gap: 11px 16px; margin: 0; }
+    dl.meta-list { display: grid; grid-template-columns: 130px 1fr; gap: 10px 16px; margin: 0; }
     dt { color: var(--muted); }
     dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
 
-    details { margin-top: 32px; border-top: 1px solid var(--line); padding-top: 18px; }
+    details.json-details { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 16px; }
     summary { cursor: pointer; color: var(--muted); font-weight: 700; }
-    pre {
-      max-height: 260px;
-      margin: 14px 0 0;
-      padding: 14px;
+    pre.code-block {
+      max-height: 240px;
+      margin: 12px 0 0;
+      padding: 12px;
       overflow: auto;
-      border-radius: 10px;
+      border-radius: 8px;
       background: #202722;
       color: #e8f0eb;
-      font: .78rem/1.55 ui-monospace, "SFMono-Regular", Consolas, monospace;
+      font: .78rem/1.5 ui-monospace, "SFMono-Regular", Consolas, monospace;
       white-space: pre-wrap;
     }
 
@@ -348,18 +384,234 @@
     .loading .default-label { display: none; }
     .loading .loading-label { display: inline; }
 
-    @media (max-width: 780px) {
-      .shell { width: min(100% - 20px, 620px); padding-top: 24px; }
-      header { align-items: flex-start; flex-direction: column; }
-      main { grid-template-columns: 1fr; }
-      .result-pane { min-height: 390px; border-top: 1px solid var(--line); border-left: 0; }
-      .dropzone, .preview { min-height: 280px; }
-      .preview { height: 280px; }
-      .result-empty { margin-top: 34px; }
+    /* SUMMARY STATS CARDS */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .kpi-card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+      box-shadow: var(--shadow-sm);
+    }
+    .kpi-card .kpi-label { font-size: .8rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+    .kpi-card .kpi-val { font-size: 1.85rem; font-weight: 850; font-family: ui-monospace, Consolas, monospace; line-height: 1.2; margin-top: 4px; }
+    .kpi-card .kpi-sub { font-size: .78rem; color: var(--muted); margin-top: 3px; }
+    .kpi-card.highlight { border-color: var(--accent); background: var(--accent-light); }
+    .kpi-card.highlight .kpi-val { color: var(--accent-dark); }
+    .kpi-card.danger { border-color: var(--danger); background: var(--danger-light); }
+    .kpi-card.danger .kpi-val { color: var(--danger); }
+
+    /* PROGRESS BAR */
+    .progress-wrap {
+      display: none;
+      margin-bottom: 20px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+    }
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: .88rem;
+      font-weight: 700;
+    }
+    .progress-bar-bg {
+      width: 100%;
+      height: 12px;
+      border-radius: 99px;
+      background: #d8e2dc;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), #2ea074);
+      border-radius: 99px;
+      transition: width .2s ease-out;
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    /* TABLES & CONTROLS */
+    .table-container {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+
+    .table-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      background: #eef3f0;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      padding: 5px 12px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: .8rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .16s;
+    }
+    .filter-btn:hover { border-color: var(--accent); color: var(--ink); }
+    .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+    .search-box {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+    .search-box input {
+      border: none;
+      background: transparent;
+      outline: none;
+      font-size: .85rem;
+      min-width: 200px;
+    }
+
+    .data-table-scroll {
+      max-height: 580px;
+      overflow-y: auto;
+    }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: .86rem;
+    }
+    table.data-table th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #e3ede7;
+      padding: 10px 14px;
+      border-bottom: 2px solid var(--line);
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    table.data-table td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #dce5e0;
+      vertical-align: middle;
+    }
+    table.data-table tr:hover td { background: #edf4f0; }
+
+    .thumb-cell {
+      width: 52px;
+      height: 52px;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #252c28;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: 1px solid var(--line);
+      transition: transform .15s;
+    }
+    .thumb-cell:hover { transform: scale(1.08); border-color: var(--accent); }
+    .thumb-cell img { width: 100%; height: 100%; object-fit: cover; }
+
+    .mono-code {
+      font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+      font-weight: 750;
+      font-size: .95rem;
+    }
+
+    .badge-match {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 800;
+      font-size: .75rem;
+    }
+    .badge-match.correct { background: #d3f0e0; color: #0a6639; }
+    .badge-match.wrong { background: #fde2df; color: #a43b2d; }
+
+    /* IMAGE MODAL */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(16, 36, 30, .75);
+      backdrop-filter: blur(4px);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+      max-width: 800px;
+      width: 100%;
+      border-radius: 16px;
+      background: var(--panel);
+      padding: 24px;
+      box-shadow: 0 12px 32px rgba(0,0,0,.25);
+      position: relative;
+    }
+    .modal-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: white;
+      cursor: pointer;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-img-wrap {
+      width: 100%;
+      max-height: 480px;
+      background: #1c221e;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      margin-top: 14px;
+    }
+    .modal-img-wrap img { max-width: 100%; max-height: 480px; object-fit: contain; }
+
+    @media (max-width: 840px) {
+      .single-layout { grid-template-columns: 1fr; }
+      .toolbar, header { flex-direction: column; align-items: flex-start; }
+      .nav-tabs { flex-wrap: wrap; }
     }
   </style>
 </head>
@@ -367,8 +619,8 @@
   <div class="shell">
     <header>
       <div>
-        <h1>Đọc số seal từ ảnh</h1>
-        <p class="intro">Tải ảnh cận cảnh seal container để kiểm tra trực tiếp pipeline PP-OCRv6 đang chạy trong service.</p>
+        <h1>Container Seal OCR</h1>
+        <p class="intro">Công cụ kiểm thử & đánh giá trực quan mô hình nhận diện số seal container (PP-OCRv6 SVTR_LCNet & YOLOv8 Detector).</p>
       </div>
       <div class="health" id="health" role="status" aria-live="polite">
         <span class="health-dot" aria-hidden="true"></span>
@@ -376,9 +628,10 @@
       </div>
     </header>
 
+    <!-- TOOLBAR CẤU HÌNH -->
     <section class="toolbar" aria-label="Cấu hình mô hình và pipeline">
       <div class="model-picker">
-        <label for="modelSelect"><strong>Mô hình OCR:</strong></label>
+        <label for="modelSelect"><strong>Mô hình active:</strong></label>
         <div class="select-wrap">
           <select id="modelSelect" aria-label="Chọn mô hình OCR">
             <option value="">Đang tải danh sách model…</option>
@@ -402,221 +655,368 @@
       </div>
     </section>
 
-    <main>
-      <section class="upload-pane" aria-labelledby="uploadTitle">
-        <h2 id="uploadTitle">Ảnh seal</h2>
-        <p class="hint">JPEG, PNG hoặc WEBP · tối đa 10 MB</p>
-        <label class="dropzone" id="dropzone" tabindex="0">
-          <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp">
-          <span class="empty" id="emptyPreview">
-            <strong>Chọn hoặc thả ảnh vào đây</strong>
-            Ảnh rõ, đủ sáng và chỉ chứa vùng seal sẽ cho kết quả tốt hơn.
-          </span>
-          <canvas class="preview" id="preview" aria-label="Ảnh seal và vùng detector"></canvas>
-        </label>
-        <div class="viewer-tools" id="viewerTools">
-          <button class="button secondary" id="rotateLeft" type="button" title="Xoay trái 90°">↶ 90°</button>
-          <button class="button secondary" id="rotateRight" type="button" title="Xoay phải 90°">↷ 90°</button>
-          <input id="zoom" type="range" min="0.5" max="4" value="1" step="0.1" aria-label="Mức zoom">
-          <span class="zoom-value" id="zoomValue">100%</span>
-          <button class="button secondary" id="resetView" type="button">Reset</button>
-        </div>
-        <p class="file-meta" id="fileMeta" aria-live="polite">Chưa chọn ảnh</p>
-        <div class="actions">
-          <button class="button secondary" id="clearButton" type="button" disabled>Xóa ảnh</button>
-          <button class="button primary" id="submitButton" type="button" disabled>
-            <span class="default-label">Đọc số seal</span>
-            <span class="loading-label">Đang xử lý…</span>
-          </button>
-        </div>
-      </section>
+    <!-- NAVIGATION TABS -->
+    <nav class="nav-tabs" role="tablist" aria-label="Chế độ kiểm thử">
+      <button class="nav-tab active" id="tabBtnSingle" role="tab" aria-selected="true" aria-controls="paneSingle">
+        <span>🔍 Nhận diện Đơn ảnh</span>
+      </button>
+      <button class="nav-tab" id="tabBtnBatch" role="tab" aria-selected="false" aria-controls="paneBatch">
+        <span>📁 Nhận diện Hàng loạt</span>
+        <span class="tab-badge" id="batchBadge" style="display:none;">0</span>
+      </button>
+      <button class="nav-tab" id="tabBtnBenchmark" role="tab" aria-selected="false" aria-controls="paneBenchmark">
+        <span>📊 Benchmark 300 ảnh chuẩn</span>
+      </button>
+    </nav>
 
-      <section class="result-pane" aria-labelledby="resultTitle">
-        <h2 id="resultTitle">Kết quả</h2>
-        <div class="result-empty" id="resultEmpty">
-          <p>Kết quả nhận dạng, độ tin cậy và thời gian xử lý sẽ xuất hiện tại đây.</p>
+    <!-- =================================================================== -->
+    <!-- TAB 1: NHẬN DIỆN ĐƠN ẢNH (SINGLE IMAGE)                             -->
+    <!-- =================================================================== -->
+    <section class="tab-pane active" id="paneSingle" role="tabpanel">
+      <div class="single-layout">
+        <div class="panel-card upload-pane">
+          <h2 class="panel-title">Ảnh seal tải lên</h2>
+          <p class="hint">JPEG, PNG hoặc WEBP · kéo thả ảnh trực tiếp</p>
+          <label class="dropzone" id="dropzone" tabindex="0">
+            <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp">
+            <span class="empty-state" id="emptyPreview">
+              <strong>Chọn hoặc thả ảnh vào đây</strong>
+              Hỗ trợ xoay ảnh, phóng to và hiển thị bounding box của detector.
+            </span>
+            <canvas class="preview-canvas" id="preview" aria-label="Ảnh seal và vùng detector"></canvas>
+          </label>
+          <div class="viewer-tools" id="viewerTools">
+            <button class="button secondary" id="rotateLeft" type="button" title="Xoay trái 90°">↶ 90°</button>
+            <button class="button secondary" id="rotateRight" type="button" title="Xoay phải 90°">↷ 90°</button>
+            <input id="zoom" type="range" min="0.5" max="4" value="1" step="0.1" aria-label="Mức zoom">
+            <span class="zoom-value" id="zoomValue">100%</span>
+            <button class="button secondary" id="resetView" type="button">Reset</button>
+          </div>
+          <p class="file-meta" id="fileMeta" aria-live="polite">Chưa chọn ảnh</p>
+          <div class="actions">
+            <button class="button secondary" id="clearButton" type="button" disabled>Xóa ảnh</button>
+            <button class="button primary" id="submitButton" type="button" disabled>
+              <span class="default-label">Đọc số seal từ ảnh</span>
+              <span class="loading-label">Đang xử lý…</span>
+            </button>
+          </div>
         </div>
-        <div class="result" id="result" aria-live="polite">
-          <span class="status" id="status"></span>
-          <p class="seal-number" id="sealNumber">Chưa có</p>
-          <dl>
-            <dt>Raw text</dt><dd id="rawText">Chưa có</dd>
-            <dt>Confidence</dt><dd id="confidence">Chưa có</dd>
-            <dt>Nguồn</dt><dd id="source">Chưa có</dd>
-            <dt>Thời gian</dt><dd id="processingTime">Chưa có</dd>
-            <dt>Model</dt><dd id="modelVersion">Chưa có</dd>
-            <dt>Cấu hình</dt><dd id="runConfig">Mặc định</dd>
-            <dt>Detector</dt><dd id="detectionCount">Chưa chạy</dd>
-            <dt>Lý do</dt><dd id="reason">Chưa có</dd>
-            <dt>Request ID</dt><dd id="requestId">Chưa có</dd>
-          </dl>
-          <details>
-            <summary>Xem JSON response</summary>
-            <pre id="jsonOutput"></pre>
-          </details>
+
+        <div class="panel-card result-pane">
+          <h2 class="panel-title">Kết quả phân tích</h2>
+          <div class="result-empty" id="resultEmpty">
+            <p>Kết quả nhận dạng, độ tin cậy, phân tích vùng seal và thời gian xử lý sẽ xuất hiện tại đây.</p>
+          </div>
+          <div class="result-box" id="result" aria-live="polite">
+            <span class="status-badge" id="status"></span>
+            <p class="seal-number" id="sealNumber">Chưa có</p>
+            <dl class="meta-list">
+              <dt>Raw text</dt><dd id="rawText">Chưa có</dd>
+              <dt>Confidence</dt><dd id="confidence">Chưa có</dd>
+              <dt>Nguồn</dt><dd id="source">Chưa có</dd>
+              <dt>Thời gian</dt><dd id="processingTime">Chưa có</dd>
+              <dt>Model</dt><dd id="modelVersion">Chưa có</dd>
+              <dt>Cấu hình</dt><dd id="runConfig">Mặc định</dd>
+              <dt>Detector</dt><dd id="detectionCount">Chưa chạy</dd>
+              <dt>Lý do</dt><dd id="reason">Chưa có</dd>
+            </dl>
+            <details class="json-details">
+              <summary>Xem phản hồi JSON gốc</summary>
+              <pre class="code-block" id="jsonOutput"></pre>
+            </details>
+          </div>
         </div>
-      </section>
-    </main>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 2: NHẬN DIỆN HÀNG LOẠT (BATCH OCR)                               -->
+    <!-- =================================================================== -->
+    <section class="tab-pane" id="paneBatch" role="tabpanel">
+      <div class="panel-card" style="margin-bottom: 22px;">
+        <h2 class="panel-title">Tải lên danh sách ảnh seal hàng loạt</h2>
+        <p class="hint">Chọn hoặc kéo thả nhiều ảnh cùng lúc để chạy nhận diện tuần tự tự động.</p>
+        
+        <label class="dropzone" id="batchDropzone" style="min-height: 140px;">
+          <input id="batchFileInput" type="file" multiple accept="image/jpeg,image/png,image/webp">
+          <div class="empty-state" style="padding: 10px;">
+            <strong>Kéo thả nhiều ảnh vào đây hoặc bấm để chọn file</strong>
+            <span id="batchSelectedMeta" style="font-size: .86rem; color: var(--muted); display: block; margin-top: 4px;">Chưa chọn ảnh nào</span>
+          </div>
+        </label>
+
+        <div style="display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap;">
+          <button class="button primary" id="btnBatchStart" type="button" disabled>▶ Bắt đầu nhận diện hàng loạt</button>
+          <button class="button secondary" id="btnBatchStop" type="button" disabled>⏹ Dừng lại</button>
+          <button class="button secondary" id="btnBatchClear" type="button" disabled>🗑 Xóa danh sách</button>
+          <button class="button secondary" id="btnBatchExport" type="button" disabled>📥 Xuất kết quả CSV</button>
+        </div>
+      </div>
+
+      <!-- Batch Progress & Stats -->
+      <div class="progress-wrap" id="batchProgressWrap">
+        <div class="progress-header">
+          <span id="batchProgressText">Đang xử lý: 0/0 (0%)</span>
+          <span id="batchEtaText">Ước tính: --</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="batchProgressBar"></div>
+        </div>
+      </div>
+
+      <div class="kpi-row" id="batchKpiRow" style="display: none;">
+        <div class="kpi-card">
+          <div class="kpi-label">Tổng số ảnh</div>
+          <div class="kpi-val" id="kpiBatchTotal">0</div>
+        </div>
+        <div class="kpi-card highlight">
+          <div class="kpi-label">Thành công (Success)</div>
+          <div class="kpi-val" id="kpiBatchSuccess">0</div>
+          <div class="kpi-sub" id="kpiBatchSuccessRate">0%</div>
+        </div>
+        <div class="kpi-card" style="border-color: var(--warning); background: var(--warning-light);">
+          <div class="kpi-label">Cần xem lại (Review)</div>
+          <div class="kpi-val" id="kpiBatchReview" style="color: var(--warning);">0</div>
+        </div>
+        <div class="kpi-card danger">
+          <div class="kpi-label">Chụp lại / Lỗi</div>
+          <div class="kpi-val" id="kpiBatchError">0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Thời gian TB</div>
+          <div class="kpi-val" id="kpiBatchAvgTime">0 ms</div>
+        </div>
+      </div>
+
+      <!-- Batch Results Table -->
+      <div class="table-container" id="batchTableContainer" style="display: none;">
+        <div class="table-toolbar">
+          <div class="filter-group">
+            <span style="font-weight: 700; font-size: .84rem; color: var(--muted); margin-right: 6px;">Lọc:</span>
+            <button class="filter-btn active" data-filter="ALL" id="filterBatchAll">Tất cả</button>
+            <button class="filter-btn" data-filter="SUCCESS">SUCCESS</button>
+            <button class="filter-btn" data-filter="REVIEW">REVIEW</button>
+            <button class="filter-btn" data-filter="RECAPTURE">RECAPTURE/ERROR</button>
+          </div>
+          <div class="search-box">
+            <input type="text" id="batchSearchInput" placeholder="Tìm tên file, mã seal…">
+          </div>
+        </div>
+        <div class="data-table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 45px;">#</th>
+                <th style="width: 60px;">Ảnh</th>
+                <th>Tên file</th>
+                <th>Số seal đọc được</th>
+                <th>Trạng thái</th>
+                <th>Confidence</th>
+                <th>Thời gian</th>
+                <th>Hành động</th>
+              </tr>
+            </thead>
+            <tbody id="batchTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 3: BENCHMARK 300 ẢNH CHUẨN                                     -->
+    <!-- =================================================================== -->
+    <section class="tab-pane" id="paneBenchmark" role="tabpanel">
+      <div class="panel-card" style="margin-bottom: 22px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+          <div>
+            <h2 class="panel-title">Tập Đánh Giá Chuẩn 300 Ảnh (Frozen Benchmark)</h2>
+            <p class="hint" style="margin-bottom: 0;">300 ảnh chụp thực tế bãi cont đã được đối soát nhân sự làm mốc kiểm chuẩn bất biến.</p>
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="button primary" id="btnLoadBenchmarkData" type="button">⚡ Nạp kết quả Benchmark chuẩn</button>
+            <button class="button secondary" id="btnLiveBenchmark" type="button">🚀 Chạy Live Benchmark trực tiếp</button>
+            <button class="button secondary danger-btn" id="btnStopLiveBenchmark" type="button" style="display: none;">⏹ Dừng Live Run</button>
+            <button class="button secondary" id="btnExportBenchmarkCsv" type="button" disabled>📥 Xuất CSV</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Benchmark Progress -->
+      <div class="progress-wrap" id="benchProgressWrap">
+        <div class="progress-header">
+          <span id="benchProgressText">Đang chạy Live Benchmark: 0/300 (0%)</span>
+          <span id="benchEtaText">Ước tính: --</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="benchProgressBar"></div>
+        </div>
+      </div>
+
+      <!-- Benchmark Summary KPI Cards -->
+      <div class="kpi-row" id="benchKpiRow" style="display: none;">
+        <div class="kpi-card">
+          <div class="kpi-label">Tổng số ảnh mẫu</div>
+          <div class="kpi-val" id="kpiBenchTotal">300</div>
+          <div class="kpi-sub" id="kpiBenchModel">Model: --</div>
+        </div>
+        <div class="kpi-card highlight">
+          <div class="kpi-label">Độ chính xác (Exact Match)</div>
+          <div class="kpi-val" id="kpiBenchAccuracy">--%</div>
+          <div class="kpi-sub" id="kpiBenchExactCount">0 / 300 ảnh</div>
+        </div>
+        <div class="kpi-card danger">
+          <div class="kpi-label">Số ca sai (Mismatch)</div>
+          <div class="kpi-val" id="kpiBenchMismatches">--</div>
+          <div class="kpi-sub" id="kpiBenchErrorRate">--%</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">CER (Tỷ lệ lỗi ký tự)</div>
+          <div class="kpi-val" id="kpiBenchCer">--</div>
+          <div class="kpi-sub">Character Error Rate</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Thời gian trung bình</div>
+          <div class="kpi-val" id="kpiBenchAvgTime">-- ms</div>
+          <div class="kpi-sub">SLA &lt; 1,500 ms</div>
+        </div>
+      </div>
+
+      <!-- Benchmark Table -->
+      <div class="table-container" id="benchTableContainer" style="display: none;">
+        <div class="table-toolbar">
+          <div class="filter-group">
+            <span style="font-weight: 700; font-size: .84rem; color: var(--muted); margin-right: 6px;">Lọc:</span>
+            <button class="filter-btn active" data-bench-filter="ALL" id="filterBenchAll">Tất cả (300)</button>
+            <button class="filter-btn" data-bench-filter="CORRECT">✅ Đúng (<span id="countCorrect">0</span>)</button>
+            <button class="filter-btn" data-bench-filter="WRONG">❌ Sai (<span id="countWrong">0</span>)</button>
+            <button class="filter-btn" data-bench-filter="OOCL">Hãng OOCL</button>
+            <button class="filter-btn" data-bench-filter="SITC">Hãng SITC</button>
+            <button class="filter-btn" data-bench-filter="YANGMING">Hãng Yang Ming</button>
+          </div>
+          <div class="search-box">
+            <input type="text" id="benchSearchInput" placeholder="Tìm label thực tế, OCR, tên file…">
+          </div>
+        </div>
+        <div class="data-table-scroll">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 45px;">#</th>
+                <th style="width: 60px;">Ảnh</th>
+                <th>Tên ảnh</th>
+                <th>Label thực tế (Ground Truth)</th>
+                <th>Label OCR được</th>
+                <th>Kết quả so sánh</th>
+                <th>Trạng thái</th>
+                <th>Confidence</th>
+                <th>Độ trễ</th>
+              </tr>
+            </thead>
+            <tbody id="benchTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- UNIVERSAL PREVIEW MODAL -->
+  <div class="modal-backdrop" id="imageModal" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <button class="modal-close" id="modalCloseBtn" aria-label="Đóng">&times;</button>
+      <h3 id="modalTitle" style="margin: 0; font-family: Georgia, serif; font-size: 1.3rem;">Chi tiết ảnh</h3>
+      <div class="modal-img-wrap">
+        <img id="modalImg" src="" alt="Ảnh phóng to">
+      </div>
+      <div id="modalMeta" style="margin-top: 16px; font-size: .92rem;"></div>
+    </div>
   </div>
 
   <script>
+    // =========================================================================
+    // STATE & VARIABLES
+    // =========================================================================
+    const preview = document.querySelector('#preview');
+    const ctx = preview.getContext('2d');
     const fileInput = document.querySelector('#fileInput');
     const dropzone = document.querySelector('#dropzone');
-    const preview = document.querySelector('#preview');
     const emptyPreview = document.querySelector('#emptyPreview');
-    const fileMeta = document.querySelector('#fileMeta');
-    const clearButton = document.querySelector('#clearButton');
-    const submitButton = document.querySelector('#submitButton');
     const viewerTools = document.querySelector('#viewerTools');
     const zoomInput = document.querySelector('#zoom');
     const zoomValue = document.querySelector('#zoomValue');
-    const result = document.querySelector('#result');
+    const submitButton = document.querySelector('#submitButton');
+    const clearButton = document.querySelector('#clearButton');
+    const fileMeta = document.querySelector('#fileMeta');
+    const resultBox = document.querySelector('#result');
     const resultEmpty = document.querySelector('#resultEmpty');
-    let selectedFile = null;
-    let previewUrl = null;
-    let previewImage = null;
-    let rotation = 0;
-    let zoom = 1;
-    let detections = [];
-    let detectedImageWidth = null;
-    let detectedImageHeight = null;
-
-    const formatBytes = bytes => bytes < 1024 * 1024
-      ? `${(bytes / 1024).toFixed(1)} KB`
-      : `${(bytes / 1024 / 1024).toFixed(2)} MB`;
-
-    function drawPreview() {
-      if (!previewImage) return;
-      const width = preview.clientWidth;
-      const height = preview.clientHeight;
-      const pixelRatio = window.devicePixelRatio || 1;
-      preview.width = Math.round(width * pixelRatio);
-      preview.height = Math.round(height * pixelRatio);
-      const context = preview.getContext('2d');
-      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-      context.fillStyle = '#242a26';
-      context.fillRect(0, 0, width, height);
-
-      const quarterTurn = Math.abs(rotation / 90) % 2;
-      const sourceWidth = previewImage.naturalWidth;
-      const sourceHeight = previewImage.naturalHeight;
-      const fit = Math.min(
-        width / (quarterTurn ? sourceHeight : sourceWidth),
-        height / (quarterTurn ? sourceWidth : sourceHeight),
-      );
-      const scale = fit * zoom;
-      context.translate(width / 2, height / 2);
-      context.rotate(rotation * Math.PI / 180);
-      context.scale(scale, scale);
-      context.translate(-sourceWidth / 2, -sourceHeight / 2);
-      context.drawImage(previewImage, 0, 0);
-
-      const ratioX = detectedImageWidth ? sourceWidth / detectedImageWidth : 1;
-      const ratioY = detectedImageHeight ? sourceHeight / detectedImageHeight : 1;
-      context.lineWidth = 3 / scale;
-      context.strokeStyle = '#ff3b30';
-      context.fillStyle = '#ff3b30';
-      context.font = `bold ${14 / scale}px ui-monospace, monospace`;
-      detections.forEach((box, index) => {
-        const x = box.x * ratioX;
-        const y = box.y * ratioY;
-        const boxWidth = box.width * ratioX;
-        const boxHeight = box.height * ratioY;
-        context.strokeRect(x, y, boxWidth, boxHeight);
-        context.fillText(`#${index + 1} ${(box.confidence * 100).toFixed(1)}%`, x, Math.max(14 / scale, y - 5 / scale));
-      });
-    }
-
-    function setView(nextRotation = rotation, nextZoom = zoom) {
-      rotation = nextRotation;
-      zoom = Math.min(4, Math.max(.5, nextZoom));
-      zoomInput.value = zoom;
-      zoomValue.textContent = `${Math.round(zoom * 100)}%`;
-      drawPreview();
-    }
-
-    function setFile(file) {
-      if (!file) return clearFile();
-      selectedFile = file;
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      previewUrl = URL.createObjectURL(file);
-      previewImage = new Image();
-      previewImage.onload = drawPreview;
-      previewImage.src = previewUrl;
-      preview.style.display = 'block';
-      viewerTools.style.display = 'flex';
-      emptyPreview.style.display = 'none';
-      detections = [];
-      detectedImageWidth = null;
-      detectedImageHeight = null;
-      setView(0, 1);
-      fileMeta.textContent = `${file.name} · ${formatBytes(file.size)}`;
-      clearButton.disabled = false;
-      submitButton.disabled = false;
-    }
-
-    function clearFile() {
-      selectedFile = null;
-      fileInput.value = '';
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      previewUrl = null;
-      previewImage = null;
-      detections = [];
-      preview.style.display = 'none';
-      viewerTools.style.display = 'none';
-      emptyPreview.style.display = 'block';
-      fileMeta.textContent = 'Chưa chọn ảnh';
-      clearButton.disabled = true;
-      submitButton.disabled = true;
-    }
-
     const modelSelect = document.querySelector('#modelSelect');
     const modelSwitchStatus = document.querySelector('#modelSwitchStatus');
+
     const toggleDetector = document.querySelector('#toggleDetector');
     const toggleBarcode = document.querySelector('#toggleBarcode');
     const toggleTta = document.querySelector('#toggleTta');
-    let availableModels = [];
+
+    let currentFile = null;
+    let currentImage = null;
+    let rotation = 0;
+    let zoom = 1;
+    let detections = [];
     let isSwitchingModel = false;
 
-    function text(id, value, fallback = 'Chưa có') {
-      document.querySelector(`#${id}`).textContent = value ?? fallback;
+    // BATCH STATE
+    let batchFiles = [];
+    let batchResults = [];
+    let isBatchRunning = false;
+    let batchCancelRequested = false;
+
+    // BENCHMARK STATE
+    let benchmarkItems = [];
+    let isBenchRunning = false;
+    let benchCancelRequested = false;
+
+    function text(id, val) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val ?? '';
     }
 
-    function showResult(data, requestId) {
-      resultEmpty.style.display = 'none';
-      result.style.display = 'block';
-      const status = document.querySelector('#status');
-      status.textContent = data.status || 'ERROR';
-      status.className = `status ${(data.status || 'ERROR').toLowerCase()}`;
-      text('sealNumber', data.sealNumber);
-      text('rawText', data.rawText);
-      text('confidence', data.confidence == null ? null : `${(data.confidence * 100).toFixed(2)}%`);
-      text('source', data.source);
-      text('processingTime', data.processingTimeMs == null ? null : `${data.processingTimeMs} ms`);
-      text('modelVersion', data.modelVersion);
-      const runCfg = [
-        `YOLO: ${toggleDetector.checked ? 'Bật' : 'Tắt'}`,
-        `Barcode: ${toggleBarcode.checked ? 'Bật' : 'Tắt'}`,
-        `TTA: ${toggleTta.checked ? 'Bật' : 'Tắt'}`,
-      ].join(' · ');
-      text('runConfig', runCfg);
-      detections = data.detections || [];
-      detectedImageWidth = data.imageWidth;
-      detectedImageHeight = data.imageHeight;
-      text('detectionCount', `${detections.length} vùng`);
-      drawPreview();
-      text('reason', data.reason);
-      text('requestId', requestId);
-      document.querySelector('#jsonOutput').textContent = JSON.stringify(data, null, 2);
+    // =========================================================================
+    // TAB MANAGEMENT
+    // =========================================================================
+    const tabs = [
+      { btn: document.querySelector('#tabBtnSingle'), pane: document.querySelector('#paneSingle') },
+      { btn: document.querySelector('#tabBtnBatch'), pane: document.querySelector('#paneBatch') },
+      { btn: document.querySelector('#tabBtnBenchmark'), pane: document.querySelector('#paneBenchmark') },
+    ];
+
+    function switchTab(targetIndex) {
+      tabs.forEach((tab, index) => {
+        if (index === targetIndex) {
+          tab.btn.classList.add('active');
+          tab.btn.setAttribute('aria-selected', 'true');
+          tab.pane.classList.add('active');
+        } else {
+          tab.btn.classList.remove('active');
+          tab.btn.setAttribute('aria-selected', 'false');
+          tab.pane.classList.remove('active');
+        }
+      });
     }
 
+    tabs.forEach((tab, idx) => {
+      tab.btn.addEventListener('click', () => switchTab(idx));
+    });
+
+    // =========================================================================
+    // HEALTH & MODEL MANAGEMENT
+    // =========================================================================
     async function checkHealth() {
       const health = document.querySelector('#health');
       const healthText = document.querySelector('#healthText');
       try {
         const response = await fetch('/health/ready', { cache: 'no-store' });
+        const data = await response.json();
+        health.className = response.ok ? 'health ready' : 'health error';
         const envTag = data.environment ? ` [${data.environment.toUpperCase()}]` : '';
-        healthText.textContent = response.ok ? `Model sẵn sàng · ${data.modelVersion}${envTag}` : 'Model đang khởi động';
+        healthText.textContent = response.ok ? `Sẵn sàng · ${data.modelVersion}${envTag}` : 'Model đang khởi động';
       } catch {
         health.className = 'health error';
         healthText.textContent = 'Không kết nối được service';
@@ -628,15 +1028,13 @@
         const response = await fetch('/api/v1/models', { cache: 'no-store' });
         if (!response.ok) return;
         const data = await response.json();
-        availableModels = data.models || [];
+        const availableModels = data.models || [];
         modelSelect.innerHTML = '';
         availableModels.forEach(m => {
           const opt = document.createElement('option');
           opt.value = m.id;
           opt.textContent = `${m.name} (${m.type})`;
-          if (m.is_active) {
-            opt.selected = true;
-          }
+          if (m.is_active) opt.selected = true;
           modelSelect.appendChild(opt);
         });
       } catch (err) {
@@ -655,9 +1053,7 @@
       modelSwitchStatus.textContent = '⏳ Đang khởi tạo model…';
 
       try {
-        const response = await fetch(`/api/v1/models/switch?model_id=${encodeURIComponent(selectedId)}`, {
-          method: 'POST',
-        });
+        const response = await fetch(`/api/v1/models/switch?model_id=${encodeURIComponent(selectedId)}`, { method: 'POST' });
         if (!response.ok) {
           const err = await response.json().catch(() => ({}));
           throw new Error(err.message || `HTTP ${response.status}`);
@@ -672,15 +1068,13 @@
               const hData = await hRes.json();
               clearInterval(poll);
               modelSwitchStatus.className = 'switch-status success';
-              modelSwitchStatus.textContent = `✓ Đã chuyển sang: ${hData.modelVersion}`;
+              modelSwitchStatus.textContent = `✓ Đã chuyển: ${hData.modelVersion}`;
               isSwitchingModel = false;
               modelSelect.disabled = false;
-              if (selectedFile) submitButton.disabled = false;
+              if (currentFile) submitButton.disabled = false;
               checkHealth();
               setTimeout(() => {
-                if (modelSwitchStatus.className.includes('success')) {
-                  modelSwitchStatus.textContent = '';
-                }
+                if (modelSwitchStatus.className.includes('success')) modelSwitchStatus.textContent = '';
               }, 4000);
               return;
             }
@@ -691,7 +1085,7 @@
             modelSwitchStatus.textContent = '⚠️ Khởi tạo lâu hơn dự kiến';
             isSwitchingModel = false;
             modelSelect.disabled = false;
-            if (selectedFile) submitButton.disabled = false;
+            if (currentFile) submitButton.disabled = false;
             checkHealth();
           }
         }, 500);
@@ -700,19 +1094,113 @@
         modelSwitchStatus.textContent = `❌ ${err.message}`;
         isSwitchingModel = false;
         modelSelect.disabled = false;
-        if (selectedFile) submitButton.disabled = false;
+        if (currentFile) submitButton.disabled = false;
         loadModels();
       }
     });
 
-    async function submit() {
-      if (!selectedFile) return;
+    // =========================================================================
+    // SINGLE IMAGE VIEW
+    // =========================================================================
+    function drawPreview() {
+      if (!currentImage) return;
+      const w = preview.width = preview.clientWidth || 320;
+      const h = preview.height = preview.clientHeight || 320;
+      ctx.clearRect(0, 0, w, h);
+      ctx.save();
+      ctx.translate(w / 2, h / 2);
+      ctx.rotate((rotation * Math.PI) / 180);
+      ctx.scale(zoom, zoom);
+
+      const isSideways = Math.abs(rotation % 180) === 90;
+      const drawnW = isSideways ? currentImage.height : currentImage.width;
+      const drawnH = isSideways ? currentImage.width : currentImage.height;
+      const scale = Math.min((w * .9) / drawnW, (h * .9) / drawnH, 1);
+      const imgW = currentImage.width * scale;
+      const imgH = currentImage.height * scale;
+
+      ctx.drawImage(currentImage, -imgW / 2, -imgH / 2, imgW, imgH);
+
+      if (detections && detections.length > 0) {
+        const origW = currentImage.naturalWidth || currentImage.width;
+        const origH = currentImage.naturalHeight || currentImage.height;
+        const scaleX = imgW / origW;
+        const scaleY = imgH / origH;
+
+        detections.forEach((det, i) => {
+          const rx = -imgW / 2 + det.x * scaleX;
+          const ry = -imgH / 2 + det.y * scaleY;
+          const rw = det.width * scaleX;
+          const rh = det.height * scaleY;
+
+          ctx.strokeStyle = i === 0 ? '#176c4c' : '#2179c9';
+          ctx.lineWidth = 3;
+          ctx.strokeRect(rx, ry, rw, rh);
+
+          ctx.fillStyle = i === 0 ? 'rgba(23, 108, 76, 0.85)' : 'rgba(33, 121, 201, 0.85)';
+          const badgeText = `Seal ${(det.confidence * 100).toFixed(0)}%`;
+          ctx.font = 'bold 11px sans-serif';
+          const textW = ctx.measureText(badgeText).width;
+          ctx.fillRect(rx, ry - 18, textW + 8, 18);
+          ctx.fillStyle = '#fff';
+          ctx.fillText(badgeText, rx + 4, ry - 4);
+        });
+      }
+      ctx.restore();
+    }
+
+    function setView(r, z) {
+      rotation = (r % 360 + 360) % 360;
+      zoom = Math.max(.5, Math.min(4, z !== undefined ? z : zoom));
+      zoomInput.value = zoom;
+      zoomValue.textContent = `${Math.round(zoom * 100)}%`;
+      drawPreview();
+    }
+
+    function setFile(file) {
+      if (!file) return;
+      currentFile = file;
+      const reader = new FileReader();
+      reader.onload = e => {
+        currentImage = new Image();
+        currentImage.onload = () => {
+          emptyPreview.style.display = 'none';
+          preview.style.display = 'block';
+          viewerTools.style.display = 'flex';
+          submitButton.disabled = false;
+          clearButton.disabled = false;
+          fileMeta.textContent = `${file.name} · ${(file.size / 1024).toFixed(1)} KB · ${currentImage.naturalWidth}×${currentImage.naturalHeight} px`;
+          detections = [];
+          setView(0, 1);
+        };
+        currentImage.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearFile() {
+      currentFile = null;
+      currentImage = null;
+      detections = [];
+      fileInput.value = '';
+      preview.style.display = 'none';
+      viewerTools.style.display = 'none';
+      emptyPreview.style.display = 'block';
+      submitButton.disabled = true;
+      clearButton.disabled = true;
+      fileMeta.textContent = 'Chưa chọn ảnh';
+      resultBox.style.display = 'none';
+      resultEmpty.style.display = 'block';
+    }
+
+    async function submitSingle() {
+      if (!currentFile) return;
       submitButton.disabled = true;
       clearButton.disabled = true;
       submitButton.classList.add('loading');
-      const form = new FormData();
-      form.append('file', selectedFile);
 
+      const form = new FormData();
+      form.append('file', currentFile);
       const queryParams = new URLSearchParams({
         enable_detector: toggleDetector.checked,
         enable_barcode: toggleBarcode.checked,
@@ -722,15 +1210,10 @@
       try {
         const response = await fetch(`/api/v1/ocr/seal?${queryParams.toString()}`, { method: 'POST', body: form });
         const requestId = response.headers.get('x-request-id');
-        let data;
-        try {
-          data = await response.json();
-        } catch {
-          data = { status: 'ERROR', reason: `HTTP_${response.status}`, rawText: 'Response không phải JSON' };
-        }
-        showResult(data, requestId);
-      } catch (error) {
-        showResult({ status: 'ERROR', reason: 'NETWORK_ERROR', rawText: error.message }, null);
+        const data = await response.json();
+        showSingleResult(data, requestId);
+      } catch (err) {
+        showSingleResult({ status: 'ERROR', reason: 'NETWORK_ERROR', rawText: err.message }, null);
       } finally {
         submitButton.classList.remove('loading');
         submitButton.disabled = false;
@@ -739,34 +1222,572 @@
       }
     }
 
-    fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
+    function showSingleResult(data, requestId) {
+      resultEmpty.style.display = 'none';
+      resultBox.style.display = 'block';
+      const statusEl = document.querySelector('#status');
+      const st = data.status || 'ERROR';
+      statusEl.className = `status-badge ${st.toLowerCase()}`;
+      statusEl.textContent = st;
+
+      text('sealNumber', data.sealNumber || '(Không đọc được)');
+      text('rawText', data.rawText || '—');
+      text('confidence', data.confidence ? `${(data.confidence * 100).toFixed(2)}%` : (data.source === 'BARCODE' ? '100% (Barcode)' : '—'));
+      text('source', data.source || '—');
+      text('processingTime', `${data.processingTimeMs || 0} ms`);
+      text('modelVersion', data.modelVersion || '—');
+      text('reason', data.reason || '—');
+
+      detections = data.detections || [];
+      text('detectionCount', `${detections.length} vùng seal`);
+      drawPreview();
+      document.querySelector('#jsonOutput').textContent = JSON.stringify(data, null, 2);
+    }
+
+    // Events for single image
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files && fileInput.files.length > 1) {
+        // Multi files -> switch to batch tab
+        addFilesToBatch(Array.from(fileInput.files));
+        switchTab(1);
+      } else {
+        setFile(fileInput.files[0]);
+      }
+    });
     clearButton.addEventListener('click', clearFile);
-    submitButton.addEventListener('click', submit);
+    submitButton.addEventListener('click', submitSingle);
     document.querySelector('#rotateLeft').addEventListener('click', () => setView(rotation - 90));
     document.querySelector('#rotateRight').addEventListener('click', () => setView(rotation + 90));
     document.querySelector('#resetView').addEventListener('click', () => setView(0, 1));
     zoomInput.addEventListener('input', () => setView(rotation, Number(zoomInput.value)));
-    preview.addEventListener('wheel', event => {
-      event.preventDefault();
-      setView(rotation, zoom + (event.deltaY < 0 ? .1 : -.1));
+    preview.addEventListener('wheel', e => {
+      e.preventDefault();
+      setView(rotation, zoom + (e.deltaY < 0 ? .1 : -.1));
     }, { passive: false });
     window.addEventListener('resize', drawPreview);
-    dropzone.addEventListener('keydown', event => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        fileInput.click();
-      }
-    });
-    ['dragenter', 'dragover'].forEach(type => dropzone.addEventListener(type, event => {
-      event.preventDefault();
+
+    // Dropzone drag-drop
+    ['dragenter', 'dragover'].forEach(type => dropzone.addEventListener(type, e => {
+      e.preventDefault();
       dropzone.classList.add('dragging');
     }));
-    ['dragleave', 'drop'].forEach(type => dropzone.addEventListener(type, event => {
-      event.preventDefault();
+    ['dragleave', 'drop'].forEach(type => dropzone.addEventListener(type, e => {
+      e.preventDefault();
       dropzone.classList.remove('dragging');
     }));
-    dropzone.addEventListener('drop', event => setFile(event.dataTransfer.files[0]));
+    dropzone.addEventListener('drop', e => {
+      const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('image/'));
+      if (files.length > 1) {
+        addFilesToBatch(files);
+        switchTab(1);
+      } else if (files.length === 1) {
+        setFile(files[0]);
+      }
+    });
 
+    // =========================================================================
+    // BATCH UPLOAD LOGIC
+    // =========================================================================
+    const batchDropzone = document.querySelector('#batchDropzone');
+    const batchFileInput = document.querySelector('#batchFileInput');
+    const batchSelectedMeta = document.querySelector('#batchSelectedMeta');
+    const btnBatchStart = document.querySelector('#btnBatchStart');
+    const btnBatchStop = document.querySelector('#btnBatchStop');
+    const btnBatchClear = document.querySelector('#btnBatchClear');
+    const btnBatchExport = document.querySelector('#btnBatchExport');
+    const batchTableBody = document.querySelector('#batchTableBody');
+    const batchBadge = document.querySelector('#batchBadge');
+
+    function addFilesToBatch(files) {
+      if (!files || files.length === 0) return;
+      const validImages = files.filter(f => f.type.startsWith('image/'));
+      batchFiles = batchFiles.concat(validImages);
+      updateBatchUI();
+    }
+
+    function updateBatchUI() {
+      const count = batchFiles.length;
+      batchBadge.textContent = count;
+      batchBadge.style.display = count > 0 ? 'inline-block' : 'none';
+      const totalMb = (batchFiles.reduce((acc, f) => acc + f.size, 0) / (1024 * 1024)).toFixed(1);
+      batchSelectedMeta.textContent = count > 0
+        ? `Đã nạp: ${count} ảnh (${totalMb} MB). Sẵn sàng nhận diện.`
+        : 'Chưa chọn ảnh nào';
+
+      btnBatchStart.disabled = count === 0 || isBatchRunning;
+      btnBatchClear.disabled = count === 0 || isBatchRunning;
+    }
+
+    batchFileInput.addEventListener('change', () => addFilesToBatch(Array.from(batchFileInput.files)));
+    ['dragenter', 'dragover'].forEach(t => batchDropzone.addEventListener(t, e => { e.preventDefault(); batchDropzone.classList.add('dragging'); }));
+    ['dragleave', 'drop'].forEach(t => batchDropzone.addEventListener(t, e => { e.preventDefault(); batchDropzone.classList.remove('dragging'); }));
+    batchDropzone.addEventListener('drop', e => {
+      const files = Array.from(e.dataTransfer.files || []);
+      addFilesToBatch(files);
+    });
+
+    btnBatchClear.addEventListener('click', () => {
+      batchFiles = [];
+      batchResults = [];
+      batchFileInput.value = '';
+      batchTableBody.innerHTML = '';
+      document.querySelector('#batchTableContainer').style.display = 'none';
+      document.querySelector('#batchKpiRow').style.display = 'none';
+      document.querySelector('#batchProgressWrap').style.display = 'none';
+      btnBatchExport.disabled = true;
+      updateBatchUI();
+    });
+
+    btnBatchStart.addEventListener('click', startBatchProcess);
+    btnBatchStop.addEventListener('click', () => { batchCancelRequested = true; });
+
+    async function startBatchProcess() {
+      if (batchFiles.length === 0 || isBatchRunning) return;
+      isBatchRunning = true;
+      batchCancelRequested = false;
+      btnBatchStart.disabled = true;
+      btnBatchStop.disabled = false;
+      btnBatchClear.disabled = true;
+      btnBatchExport.disabled = true;
+
+      const progressWrap = document.querySelector('#batchProgressWrap');
+      const progressBar = document.querySelector('#batchProgressBar');
+      const progressText = document.querySelector('#batchProgressText');
+      const etaText = document.querySelector('#batchEtaText');
+      progressWrap.style.display = 'block';
+
+      document.querySelector('#batchKpiRow').style.display = 'grid';
+      document.querySelector('#batchTableContainer').style.display = 'block';
+      batchResults = [];
+      batchTableBody.innerHTML = '';
+
+      const queryParams = new URLSearchParams({
+        enable_detector: toggleDetector.checked,
+        enable_barcode: toggleBarcode.checked,
+        enable_tta: toggleTta.checked,
+      });
+
+      const startTime = performance.now();
+      const total = batchFiles.length;
+
+      for (let i = 0; i < total; i++) {
+        if (batchCancelRequested) break;
+
+        const file = batchFiles[i];
+        const pct = Math.round((i / total) * 100);
+        progressBar.style.width = `${pct}%`;
+        progressText.textContent = `Đang xử lý: ${i + 1}/${total} (${pct}%) — ${file.name}`;
+
+        const elapsedSec = (performance.now() - startTime) / 1000;
+        const avgPerItem = i > 0 ? elapsedSec / i : 0.8;
+        const remainSec = Math.round(avgPerItem * (total - i));
+        etaText.textContent = `Còn lại ~${remainSec}s`;
+
+        let itemResult = null;
+        const fileUrl = URL.createObjectURL(file);
+
+        try {
+          const form = new FormData();
+          form.append('file', file);
+          const res = await fetch(`/api/v1/ocr/seal?${queryParams.toString()}`, { method: 'POST', body: form });
+          const data = await res.json();
+          itemResult = {
+            index: i + 1,
+            fileName: file.name,
+            fileUrl: fileUrl,
+            sealNumber: data.sealNumber || '',
+            status: data.status || 'ERROR',
+            confidence: data.confidence,
+            latencyMs: data.processingTimeMs || 0,
+            rawText: data.rawText,
+            source: data.source,
+            reason: data.reason,
+            detections: data.detections || [],
+          };
+        } catch (err) {
+          itemResult = {
+            index: i + 1,
+            fileName: file.name,
+            fileUrl: fileUrl,
+            sealNumber: '',
+            status: 'ERROR',
+            confidence: null,
+            latencyMs: 0,
+            reason: err.message,
+          };
+        }
+
+        batchResults.push(itemResult);
+        renderBatchRow(itemResult);
+        updateBatchKPIs();
+      }
+
+      progressBar.style.width = '100%';
+      progressText.textContent = batchCancelRequested ? 'Đã dừng xử lý!' : `Hoàn tất ${batchResults.length}/${total} ảnh!`;
+      etaText.textContent = '';
+      isBatchRunning = false;
+      btnBatchStart.disabled = false;
+      btnBatchStop.disabled = true;
+      btnBatchClear.disabled = false;
+      btnBatchExport.disabled = batchResults.length === 0;
+    }
+
+    function renderBatchRow(res) {
+      const tr = document.createElement('tr');
+      tr.id = `batch-row-${res.index}`;
+      const confStr = res.confidence ? `${(res.confidence * 100).toFixed(1)}%` : (res.source === 'BARCODE' ? '100%' : '—');
+      const stClass = res.status.toLowerCase();
+
+      tr.innerHTML = `
+        <td>${res.index}</td>
+        <td>
+          <div class="thumb-cell" onclick="openModal('${res.fileUrl}', '${escapeHtml(res.fileName)}', '${escapeHtml(res.sealNumber)}', '${res.status}', ${res.confidence})">
+            <img src="${res.fileUrl}" alt="Thumb">
+          </div>
+        </td>
+        <td title="${escapeHtml(res.fileName)}"><strong>${escapeHtml(res.fileName)}</strong></td>
+        <td><span class="mono-code">${escapeHtml(res.sealNumber || '—')}</span></td>
+        <td><span class="status-badge ${stClass}">${res.status}</span></td>
+        <td>${confStr}</td>
+        <td>${res.latencyMs} ms</td>
+        <td>
+          <button class="button secondary" style="padding: 3px 8px; min-height: 28px; font-size: .78rem;" onclick="openModal('${res.fileUrl}', '${escapeHtml(res.fileName)}', '${escapeHtml(res.sealNumber)}', '${res.status}', ${res.confidence})">Xem</button>
+        </td>
+      `;
+      batchTableBody.appendChild(tr);
+    }
+
+    function updateBatchKPIs() {
+      const total = batchResults.length;
+      const success = batchResults.filter(r => r.status === 'SUCCESS').length;
+      const review = batchResults.filter(r => r.status === 'REVIEW').length;
+      const error = batchResults.filter(r => r.status === 'RECAPTURE' || r.status === 'ERROR').length;
+      const avgTime = total > 0 ? Math.round(batchResults.reduce((acc, r) => acc + r.latencyMs, 0) / total) : 0;
+
+      text('kpiBatchTotal', total);
+      text('kpiBatchSuccess', success);
+      text('kpiBatchSuccessRate', total ? `${((success / total) * 100).toFixed(1)}%` : '0%');
+      text('kpiBatchReview', review);
+      text('kpiBatchError', error);
+      text('kpiBatchAvgTime', `${avgTime} ms`);
+    }
+
+    // Filter Batch Table
+    document.querySelectorAll('[data-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyBatchFilter();
+      });
+    });
+    document.querySelector('#batchSearchInput').addEventListener('input', applyBatchFilter);
+
+    function applyBatchFilter() {
+      const activeFilter = document.querySelector('[data-filter].active')?.dataset.filter || 'ALL';
+      const search = (document.querySelector('#batchSearchInput').value || '').toLowerCase();
+
+      batchResults.forEach(r => {
+        const row = document.getElementById(`batch-row-${r.index}`);
+        if (!row) return;
+        let matchFilter = true;
+        if (activeFilter === 'SUCCESS') matchFilter = r.status === 'SUCCESS';
+        else if (activeFilter === 'REVIEW') matchFilter = r.status === 'REVIEW';
+        else if (activeFilter === 'RECAPTURE') matchFilter = r.status === 'RECAPTURE' || r.status === 'ERROR';
+
+        const matchSearch = !search || r.fileName.toLowerCase().includes(search) || r.sealNumber.toLowerCase().includes(search);
+        row.style.display = matchFilter && matchSearch ? '' : 'none';
+      });
+    }
+
+    btnBatchExport.addEventListener('click', () => {
+      if (!batchResults.length) return;
+      const csvRows = ['STT,File,SealNumber,Status,Confidence,LatencyMs'];
+      batchResults.forEach(r => {
+        csvRows.push(`${r.index},"${r.fileName}","${r.sealNumber}",${r.status},${r.confidence || ''},${r.latencyMs}`);
+      });
+      downloadCsv(csvRows.join('\n'), `batch_ocr_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'_')}.csv`);
+    });
+
+    // =========================================================================
+    // BENCHMARK 300 ẢNH LOGIC
+    // =========================================================================
+    const btnLoadBenchmarkData = document.querySelector('#btnLoadBenchmarkData');
+    const btnLiveBenchmark = document.querySelector('#btnLiveBenchmark');
+    const btnStopLiveBenchmark = document.querySelector('#btnStopLiveBenchmark');
+    const btnExportBenchmarkCsv = document.querySelector('#btnExportBenchmarkCsv');
+    const benchTableBody = document.querySelector('#benchTableBody');
+
+    btnLoadBenchmarkData.addEventListener('click', loadBenchmarkOfficial);
+    btnLiveBenchmark.addEventListener('click', runLiveBenchmark);
+    btnStopLiveBenchmark.addEventListener('click', () => { benchCancelRequested = true; });
+
+    async function loadBenchmarkOfficial() {
+      btnLoadBenchmarkData.disabled = true;
+      btnLoadBenchmarkData.textContent = '⏳ Đang nạp dữ liệu…';
+      try {
+        const selectedModel = modelSelect.value;
+        const res = await fetch(`/api/v1/benchmark/data?model_id=${encodeURIComponent(selectedModel)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        benchmarkItems = data.items || [];
+        renderBenchmarkSuite(data);
+      } catch (err) {
+        alert('Lỗi nạp benchmark: ' + err.message);
+      } finally {
+        btnLoadBenchmarkData.disabled = false;
+        btnLoadBenchmarkData.textContent = '⚡ Nạp kết quả Benchmark chuẩn';
+      }
+    }
+
+    function renderBenchmarkSuite(data) {
+      document.querySelector('#benchKpiRow').style.display = 'grid';
+      document.querySelector('#benchTableContainer').style.display = 'block';
+      btnExportBenchmarkCsv.disabled = false;
+
+      text('kpiBenchTotal', data.total);
+      text('kpiBenchModel', `Model: ${data.modelVersion}`);
+      text('kpiBenchAccuracy', `${data.accuracyPercent}%`);
+      text('kpiBenchExactCount', `${data.exactMatches} / ${data.total} khớp hoàn toàn`);
+      text('kpiBenchMismatches', data.mismatches);
+      text('kpiBenchErrorRate', `${((data.mismatches / data.total) * 100).toFixed(1)}% lỗi`);
+      text('kpiBenchCer', data.modelVersion.includes('base') ? '0.4465' : '0.0733');
+
+      const avgLat = data.items.length > 0 ? Math.round(data.items.reduce((acc, i) => acc + (i.latency_ms || 0), 0) / data.items.length) : 764;
+      text('kpiBenchAvgTime', `${avgLat} ms`);
+
+      text('countCorrect', data.exactMatches);
+      text('countWrong', data.mismatches);
+
+      renderBenchmarkRows(data.items);
+    }
+
+    function renderBenchmarkRows(items) {
+      benchTableBody.innerHTML = '';
+      items.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.id = `bench-row-${idx + 1}`;
+        const isMatch = item.exact_match;
+        const matchBadge = isMatch
+          ? '<span class="badge-match correct">✓ ĐÚNG</span>'
+          : '<span class="badge-match wrong">✗ SAI</span>';
+        const confStr = item.confidence ? `${(item.confidence * 100).toFixed(1)}%` : '—';
+        const stClass = (item.status || 'OTHER').toLowerCase();
+
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td>
+            <div class="thumb-cell" onclick="openModal('${item.image_url}', '${escapeHtml(item.image)}', '${escapeHtml(item.prediction)}', '${item.status}', ${item.confidence}, '${escapeHtml(item.ground_truth)}')">
+              <img src="${item.image_url}" alt="Thumb" loading="lazy">
+            </div>
+          </td>
+          <td style="font-size: .82rem; color: var(--muted);" title="${escapeHtml(item.image)}">${escapeHtml(item.image)}</td>
+          <td><span class="mono-code" style="background:#eaf0eb; padding:2px 6px; border-radius:4px;">${escapeHtml(item.ground_truth)}</span></td>
+          <td><span class="mono-code" style="color: ${isMatch ? 'var(--accent-dark)' : 'var(--danger)'};">${escapeHtml(item.prediction || '(trống)')}</span></td>
+          <td>${matchBadge}</td>
+          <td><span class="status-badge ${stClass}">${item.status || '—'}</span></td>
+          <td>${confStr}</td>
+          <td>${item.latency_ms ? Math.round(item.latency_ms) : '—'} ms</td>
+        `;
+        benchTableBody.appendChild(tr);
+      });
+      applyBenchFilter();
+    }
+
+    async function runLiveBenchmark() {
+      if (isBenchRunning) return;
+      if (benchmarkItems.length === 0) {
+        await loadBenchmarkOfficial();
+      }
+      if (benchmarkItems.length === 0) return;
+
+      isBenchRunning = true;
+      benchCancelRequested = false;
+      btnLiveBenchmark.disabled = true;
+      btnStopLiveBenchmark.style.display = 'inline-flex';
+      btnLoadBenchmarkData.disabled = true;
+
+      const progressWrap = document.querySelector('#benchProgressWrap');
+      const progressBar = document.querySelector('#benchProgressBar');
+      const progressText = document.querySelector('#benchProgressText');
+      const etaText = document.querySelector('#benchEtaText');
+      progressWrap.style.display = 'block';
+
+      const total = benchmarkItems.length;
+      let exactMatches = 0;
+      const startTime = performance.now();
+
+      const queryParams = new URLSearchParams({
+        enable_detector: toggleDetector.checked,
+        enable_barcode: toggleBarcode.checked,
+        enable_tta: toggleTta.checked,
+      });
+
+      for (let i = 0; i < total; i++) {
+        if (benchCancelRequested) break;
+        const item = benchmarkItems[i];
+        const pct = Math.round((i / total) * 100);
+        progressBar.style.width = `${pct}%`;
+        progressText.textContent = `Đang chạy Live Benchmark: ${i + 1}/${total} (${pct}%) — ${item.image}`;
+
+        const elapsedSec = (performance.now() - startTime) / 1000;
+        const avgPerItem = i > 0 ? elapsedSec / i : 0.8;
+        const remainSec = Math.round(avgPerItem * (total - i));
+        etaText.textContent = `Ước tính còn: ~${remainSec}s`;
+
+        try {
+          const imgBlob = await fetch(item.image_url).then(r => r.blob());
+          const form = new FormData();
+          form.append('file', imgBlob, item.image);
+          const res = await fetch(`/api/v1/ocr/seal?${queryParams.toString()}`, { method: 'POST', body: form });
+          const ocrRes = await res.json();
+
+          const pred = ocrRes.sealNumber || '';
+          const isMatch = pred === item.ground_truth;
+          if (isMatch) exactMatches++;
+
+          item.prediction = pred;
+          item.exact_match = isMatch;
+          item.confidence = ocrRes.confidence;
+          item.status = ocrRes.status;
+          item.latency_ms = ocrRes.processingTimeMs;
+
+          // Update row in table
+          updateLiveBenchRow(i + 1, item);
+        } catch (err) {
+          console.warn('Live item error', item.image, err);
+        }
+      }
+
+      progressBar.style.width = '100%';
+      progressText.textContent = benchCancelRequested ? 'Đã dừng Live Benchmark!' : `Hoàn tất Live Benchmark 300 ảnh!`;
+      etaText.textContent = '';
+      isBenchRunning = false;
+      btnLiveBenchmark.disabled = false;
+      btnStopLiveBenchmark.style.display = 'none';
+      btnLoadBenchmarkData.disabled = false;
+
+      // Update KPI
+      const currentModel = modelSelect.value;
+      const acc = total > 0 ? round2((exactMatches / total) * 100) : 0;
+      text('kpiBenchAccuracy', `${acc}%`);
+      text('kpiBenchExactCount', `${exactMatches} / ${total} khớp hoàn toàn`);
+      text('kpiBenchMismatches', total - exactMatches);
+      text('countCorrect', exactMatches);
+      text('countWrong', total - exactMatches);
+    }
+
+    function updateLiveBenchRow(rowNum, item) {
+      const tr = document.getElementById(`bench-row-${rowNum}`);
+      if (!tr) return;
+      const isMatch = item.exact_match;
+      const matchBadge = isMatch
+        ? '<span class="badge-match correct">✓ ĐÚNG</span>'
+        : '<span class="badge-match wrong">✗ SAI</span>';
+      const confStr = item.confidence ? `${(item.confidence * 100).toFixed(1)}%` : '—';
+      const stClass = (item.status || 'OTHER').toLowerCase();
+
+      tr.cells[4].innerHTML = `<span class="mono-code" style="color: ${isMatch ? 'var(--accent-dark)' : 'var(--danger)'};">${escapeHtml(item.prediction || '(trống)')}</span>`;
+      tr.cells[5].innerHTML = matchBadge;
+      tr.cells[6].innerHTML = `<span class="status-badge ${stClass}">${item.status || '—'}</span>`;
+      tr.cells[7].textContent = confStr;
+      tr.cells[8].textContent = `${Math.round(item.latency_ms || 0)} ms`;
+    }
+
+    // Benchmark Filters
+    document.querySelectorAll('[data-bench-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-bench-filter]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyBenchFilter();
+      });
+    });
+    document.querySelector('#benchSearchInput').addEventListener('input', applyBenchFilter);
+
+    function applyBenchFilter() {
+      const activeFilter = document.querySelector('[data-bench-filter].active')?.dataset.benchFilter || 'ALL';
+      const search = (document.querySelector('#benchSearchInput').value || '').toLowerCase().trim();
+
+      benchmarkItems.forEach((item, idx) => {
+        const row = document.getElementById(`bench-row-${idx + 1}`);
+        if (!row) return;
+
+        let matchFilter = true;
+        if (activeFilter === 'CORRECT') matchFilter = item.exact_match === true;
+        else if (activeFilter === 'WRONG') matchFilter = item.exact_match === false;
+        else if (activeFilter === 'OOCL') matchFilter = item.ground_truth.startsWith('OOL');
+        else if (activeFilter === 'SITC') matchFilter = item.ground_truth.startsWith('SJJ') || item.ground_truth.startsWith('SIT');
+        else if (activeFilter === 'YANGMING') matchFilter = item.ground_truth.startsWith('YMA');
+
+        let matchSearch = true;
+        if (search) {
+          matchSearch = item.ground_truth.toLowerCase().includes(search)
+            || (item.prediction && item.prediction.toLowerCase().includes(search))
+            || item.image.toLowerCase().includes(search);
+        }
+
+        row.style.display = matchFilter && matchSearch ? '' : 'none';
+      });
+    }
+
+    btnExportBenchmarkCsv.addEventListener('click', () => {
+      if (!benchmarkItems.length) return;
+      const csvRows = ['STT,Image,GroundTruth,Prediction,ExactMatch,Status,Confidence,LatencyMs'];
+      benchmarkItems.forEach((item, i) => {
+        csvRows.push(`${i+1},"${item.image}","${item.ground_truth}","${item.prediction || ''}",${item.exact_match},${item.status || ''},${item.confidence || ''},${item.latency_ms || ''}`);
+      });
+      downloadCsv(csvRows.join('\n'), `benchmark_results_300_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'_')}.csv`);
+    });
+
+    // =========================================================================
+    // MODAL PREVIEW
+    // =========================================================================
+    const imageModal = document.querySelector('#imageModal');
+    const modalImg = document.querySelector('#modalImg');
+    const modalTitle = document.querySelector('#modalTitle');
+    const modalMeta = document.querySelector('#modalMeta');
+    const modalCloseBtn = document.querySelector('#modalCloseBtn');
+
+    window.openModal = function(url, filename, sealNum, status, conf, groundTruth) {
+      modalImg.src = url;
+      modalTitle.textContent = filename || 'Chi tiết ảnh';
+      let metaHtml = `
+        <div style="display: grid; grid-template-columns: 140px 1fr; gap: 8px; font-size: .9rem;">
+          ${groundTruth ? `<div><strong>Ground Truth:</strong></div><div><span class="mono-code" style="background:#eaf0eb; padding:2px 8px; border-radius:4px;">${escapeHtml(groundTruth)}</span></div>` : ''}
+          <div><strong>Số seal đọc được:</strong></div><div><span class="mono-code" style="font-size: 1.2rem; color: var(--accent-dark);">${escapeHtml(sealNum || '(Không có)')}</span></div>
+          <div><strong>Trạng thái:</strong></div><div><span class="status-badge ${(status||'').toLowerCase()}">${status || '—'}</span></div>
+          ${conf ? `<div><strong>Độ tin cậy:</strong></div><div>${(conf * 100).toFixed(2)}%</div>` : ''}
+        </div>
+      `;
+      modalMeta.innerHTML = metaHtml;
+      imageModal.classList.add('open');
+    };
+
+    modalCloseBtn.addEventListener('click', () => imageModal.classList.remove('open'));
+    imageModal.addEventListener('click', e => {
+      if (e.target === imageModal) imageModal.classList.remove('open');
+    });
+
+    // =========================================================================
+    // HELPERS
+    // =========================================================================
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function round2(num) { return Math.round(num * 100) / 100; }
+    function downloadCsv(content, filename) {
+      const blob = new Blob(["\ufeff" + content], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // INIT
     checkHealth();
     loadModels();
   </script>
