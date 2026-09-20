@@ -1,7 +1,7 @@
 # Container Seal OCR
 
 An application for recognizing **container seal numbers** from images. It automatically locates the seal, reads its barcode or printed characters, cleans the result, and evaluates its confidence.
-
+[![Untitled.png](https://i.postimg.cc/2S5D0CR0/Untitled.png)](https://postimg.cc/4mjqdk3c)
 ## Features
 
 - Recognize a single image or process multiple images from the web interface.
