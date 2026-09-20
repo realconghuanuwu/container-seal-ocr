@@ -1,7 +1,7 @@
 name: container_seal_ocr
 description: Pure Dart & Flutter library for Container Seal OCR recognition with automatic shipping line detection (100% Offline On-Device).
 version: 1.0.0
-homepage: https://github.com/your-org/container_seal_ocr
+homepage: https://github.com/realconghuanuwu/container-seal-ocr
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
