@@ -9,13 +9,11 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.11
-      - key: APP_ENV
-        value: prod
       - key: SEAL_DETECTOR_MODEL
-        value: models/seal-detector-v1/best.onnx
+        value: models/seal-det-v1.0.0/best.onnx
       - key: RECOGNITION_MODEL_DIR
-        value: models/seal-ocr-rec-v1
+        value: models/seal-rec-v1.0.0
       - key: MODEL_VERSION
-        value: seal-ocr-det-v1-rec-v1
+        value: seal-det-v1.0.0-rec-v1.0.0
       - key: PADDLE_PDX_CACHE_HOME
         value: /tmp/paddlex-cache

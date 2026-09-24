@@ -1,0 +1,6 @@
+{
+  "modelVersion": "seal-rec-v1.0.3",
+  "pipelineVersion": "seal-det-v1.0.0-rec-v1.0.3",
+  "baseModel": "seal-rec-v1.0.0",
+  "description": "Fine-tuned model v1.0.3 on 14,500 base samples + 100 manual photos with character spacing augmentation"
+}

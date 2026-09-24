@@ -4,10 +4,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app \
     PADDLE_PDX_CACHE_HOME=/tmp/paddlex-cache \
-    SEAL_DETECTOR_MODEL=models/seal-detector-v1/best.onnx \
-    RECOGNITION_MODEL_DIR=models/seal-ocr-rec-v1 \
-    MODEL_VERSION=seal-ocr-det-v1-rec-v1 \
-    APP_ENV=prod \
+    SEAL_DETECTOR_MODEL=models/seal-det-v1.0.0/best.onnx \
+    RECOGNITION_MODEL_DIR=models/seal-rec-v1.0.0 \
+    MODEL_VERSION=seal-det-v1.0.0-rec-v1.0.0 \
     PORT=7860
 
 WORKDIR /app

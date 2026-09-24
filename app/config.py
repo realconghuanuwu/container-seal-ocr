@@ -1,6 +1,28 @@
 import os
 import re
 from dataclasses import dataclass
+from pathlib import Path
+
+
+def _load_env_file() -> None:
+    if "PYTEST_CURRENT_TEST" in os.environ:
+        return
+    env_file = Path(__file__).resolve().parent.parent / ".env"
+    if env_file.is_file():
+        try:
+            for line in env_file.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, val = line.split("=", 1)
+                key, val = key.strip(), val.strip()
+                if key and key not in os.environ:
+                    os.environ[key] = val
+        except Exception:
+            pass
+
+
+_load_env_file()
 
 
 @dataclass(frozen=True)
@@ -27,13 +49,10 @@ class Settings:
     seal_detector_padding: float = float(os.getenv("SEAL_DETECTOR_PADDING", "0.18"))
     seal_detector_max_regions: int = int(os.getenv("SEAL_DETECTOR_MAX_REGIONS", "3"))
     model_version: str = os.getenv("MODEL_VERSION", "pp-ocrv6-medium-base")
-    app_env: str = os.getenv("APP_ENV", "prod")
+    app_env: str = os.getenv("APP_ENV", "standard")
 
     def __post_init__(self) -> None:
         re.compile(self.seal_allowed_pattern)
-        normalized_env = self.app_env.lower()
-        if normalized_env not in ("dev", "development", "uat", "staging", "prod", "production", "test"):
-            raise ValueError(f"Invalid APP_ENV: {self.app_env}. Allowed: dev, uat, prod, test")
         if not (0 <= self.review_threshold <= self.success_threshold <= 1):
             raise ValueError("Confidence thresholds must satisfy 0 <= review <= success <= 1")
         if not (1 <= self.seal_min_length <= self.seal_max_length):

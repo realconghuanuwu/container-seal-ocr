@@ -50,6 +50,61 @@ def is_recognition_model_dir(path: Path) -> bool:
     return any((path / indicator).is_file() for indicator in rec_indicators)
 
 
+import re
+
+
+def extract_detector_tag(settings: Settings) -> str:
+    """Extract detector tag in SemVer format (e.g. 'det-v1.0.0')."""
+    if not settings.seal_detector_model:
+        return "det-v1.0.0"
+    p = Path(settings.seal_detector_model)
+    parent_name = p.parent.name
+    match = re.search(r"det(?:ector)?-v?([0-9]+(?:\.[0-9]+)*)", parent_name, re.IGNORECASE)
+    if match:
+        raw_ver = match.group(1)
+        semver = raw_ver if "." in raw_ver else f"{raw_ver}.0.0"
+        return f"det-v{semver}"
+    return "det-v1.0.0"
+
+
+def extract_rec_tag(model_id: str) -> str:
+    """Extract recognition tag in SemVer format (e.g. 'rec-v1.0.0' or 'rec-v1.0.3')."""
+    if "rec-v4-manual" in model_id or "rec-v1.0.3" in model_id:
+        return "rec-v1.0.3"
+    if "rec-v1" in model_id and "v1.0" not in model_id:
+        return "rec-v1.0.0"
+    match = re.search(r"rec-v?([0-9]+(?:\.[0-9]+)*)", model_id, re.IGNORECASE)
+    if match:
+        raw_ver = match.group(1)
+        semver = raw_ver if "." in raw_ver else f"{raw_ver}.0.0"
+        return f"rec-v{semver}"
+    return model_id.removeprefix("seal-ocr-").removeprefix("seal-")
+
+
+def build_pipeline_version(model_id: str, settings: Settings) -> str:
+    """Build standardized pipeline version string: seal-det-vX.Y.Z-rec-vA.B.C."""
+    det_tag = extract_detector_tag(settings)
+    rec_tag = extract_rec_tag(model_id)
+    return f"seal-{det_tag}-{rec_tag}"
+
+
+def format_model_display(model_id: str, settings: Settings) -> tuple[str, str]:
+    """Format human-readable name and description for UI model selector."""
+    rec_tag = extract_rec_tag(model_id)
+
+    if rec_tag == "rec-v1.0.0":
+        name = "Seal OCR (rec-v1.0.0)"
+        desc = "Mô hình v1.0.0 fine-tuned trên 14,500+ ảnh seal chuẩn (Accuracy 82.67%, CER 7.33%)"
+    elif rec_tag == "rec-v1.0.3":
+        name = "Seal OCR (rec-v1.0.3)"
+        desc = "Mô hình v1.0.3 fine-tuned trên 14,500 ảnh base + 100 ảnh manual"
+    else:
+        name = f"Seal OCR ({rec_tag})"
+        desc = f"Mô hình fine-tune nhận dạng ({model_id})"
+
+    return name, desc
+
+
 def list_available_models(settings: Settings, active_version: str | None = None) -> list[dict]:
     """List all available recognition models including the official base model."""
     active_version = active_version or settings.model_version
@@ -65,34 +120,20 @@ def list_available_models(settings: Settings, active_version: str | None = None)
             if is_recognition_model_dir(sub_dir):
                 fine_tuned_found = True
                 model_id = sub_dir.name
+                rec_tag = extract_rec_tag(model_id)
+                pipeline_ver = build_pipeline_version(model_id, settings)
+
                 is_active = (
-                    active_version == model_id
+                    active_version in (model_id, pipeline_ver, rec_tag)
                     or (model_id in (active_version or ""))
+                    or (rec_tag in (active_version or ""))
                     or (
                         settings.recognition_model_dir
                         and Path(settings.recognition_model_dir).resolve() == sub_dir.resolve()
                     )
                 )
-                if model_id == "seal-ocr-rec-v1":
-                    env_label = getattr(settings, "app_env", "prod").upper()
-                    if env_label in ("DEV", "DEVELOPMENT"):
-                        name = "Seal OCR Dev v1"
-                        desc = "Mô hình Dev v1 fine-tuned trên 14,500+ ảnh seal chuẩn (Môi trường Development)"
-                    elif env_label in ("UAT", "STAGING"):
-                        name = "Seal OCR UAT v1"
-                        desc = "Mô hình UAT Release Candidate v1 (Accuracy 82.67%, CER 7.33%)"
-                    else:
-                        name = "Seal OCR Production v1"
-                        desc = "Mô hình Production v1 fine-tuned trên 14,500+ ảnh seal chuẩn (Accuracy 82.67%, CER 7.33%)"
-                elif "-uat" in model_id or "-rc" in model_id:
-                    name = f"Seal OCR UAT ({model_id})"
-                    desc = f"Mô hình ứng viên UAT/Staging ({model_id})"
-                elif "-dev" in model_id:
-                    name = f"Seal OCR Dev ({model_id})"
-                    desc = f"Mô hình thử nghiệm Development ({model_id})"
-                else:
-                    name = model_id.replace("-", " ").title()
-                    desc = f"Mô hình fine-tune nhận dạng ({model_id})"
+
+                name, desc = format_model_display(model_id, settings)
 
                 models.append({
                     "id": model_id,
@@ -129,15 +170,24 @@ def resolve_model(model_id: str, settings: Settings) -> tuple[str, str | None]:
         raise ValueError(f"Models directory not found; cannot switch to {model_id}")
 
     target_dir = models_dir / model_id
-    if target_dir.is_dir() and is_recognition_model_dir(target_dir):
-        rec_suffix = model_id.removeprefix("seal-ocr-")
-        version = f"seal-ocr-det-v1-{rec_suffix}" if "rec" in model_id and settings.seal_detector_model else model_id
-        return version, str(target_dir)
+    if not (target_dir.is_dir() and is_recognition_model_dir(target_dir)):
+        # Check alias / substring match
+        target_dir = None
+        for sub_dir in sorted(models_dir.iterdir()):
+            if not sub_dir.is_dir() or not is_recognition_model_dir(sub_dir):
+                continue
+            rec_tag = extract_rec_tag(sub_dir.name)
+            if (
+                sub_dir.name == model_id
+                or rec_tag == extract_rec_tag(model_id)
+                or sub_dir.name in model_id
+                or model_id in sub_dir.name
+            ):
+                target_dir = sub_dir
+                break
+        if target_dir is None:
+            raise ValueError(f"Unknown or invalid model id: {model_id}")
 
-    # Check if model_id is a full version string like seal-ocr-det-v1-rec-v2
-    for sub_dir in models_dir.iterdir():
-        if sub_dir.is_dir() and is_recognition_model_dir(sub_dir):
-            if sub_dir.name in model_id:
-                return model_id, str(sub_dir)
+    version = build_pipeline_version(target_dir.name, settings)
+    return version, str(target_dir)
 
-    raise ValueError(f"Unknown or invalid model id: {model_id}")

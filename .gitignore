@@ -3,8 +3,10 @@ __pycache__/
 .pytest_cache/
 *.pyc
 models/*
-!models/seal-detector-v1/
-!models/seal-ocr-rec-v1/
+!models/seal-det-*/
+!models/seal-rec-*/
+!models/seal-detector-*/
+!models/seal-ocr-rec-*/
 training_runs/
 training_source/
 recognition_dataset/
