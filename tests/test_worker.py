@@ -50,3 +50,4 @@ def test_custom_recognizer_directory_is_forwarded_to_paddleocr(monkeypatch):
                            model_version="seal-ocr-rec-v1"))
     assert captured["text_detection_model_dir"] == "/models/det"
     assert captured["text_recognition_model_dir"] == "/models/seal-ocr-rec-v1"
+    assert captured["use_textline_orientation"] is True
