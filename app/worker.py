@@ -19,6 +19,8 @@ def create_engine(settings: Settings):
         use_doc_orientation_classify=False,
         use_doc_unwarping=False,
         use_textline_orientation=True,
+        text_det_box_thresh=0.50,
+        text_det_unclip_ratio=1.9,
         device="cpu",
     )
     if settings.detection_model_dir:
