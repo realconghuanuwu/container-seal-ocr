@@ -21,9 +21,12 @@ python scripts/prepare_dataset.py `
 
 The script automatically validates seal numbers from filenames (or `labels.csv`), crops the seal using YOLO detector, and outputs standard PaddleOCR `images/`, `train.txt`, `val.txt`.
 
-## 2. Upload to Kaggle
+## 2. Upload to Kaggle / Google Colab
 
-Create a Kaggle Dataset from the contents of `E:\Code\python\ocr\archive\ocr-service-artifacts\2026-09-21\seal-recognition-v4-manual\recognition_dataset_v4_complete`, or upload `E:\Code\python\ocr\archive\ocr-service-artifacts\2026-09-21\seal-recognition-v4-manual\recognition_dataset_v4_manual.zip` and unzip it in the notebook. The extracted root must contain:
+Create a Kaggle Dataset (or upload to Colab) from the contents of:
+`E:\Code\python\ocr\archive\recognition_dataset_rec_v1.0.3` (or zip file).
+
+The dataset directory must contain:
 
 ```text
 metadata.json
@@ -33,14 +36,28 @@ val.txt
 images/
 ```
 
-Expected v4 counts for the current dataset are 14,800 total, 13,237 train, and 1,563 validation samples.
+Total counts: 14,800 total, 13,237 train, and 1,563 validation samples.
 
-## 3. Rebuild v1 checkpoint and fine-tune on two GPUs
+## 3. Training on Kaggle / Google Colab (1 GPU or 2 GPUs)
 
-Attach only `seal-recognition-v4-manual`. It already contains the full frozen v3 split (14,500 samples) plus the manual data. The reusable notebook reconstructs the original 13,000/1,500 v3 train/validation lists from `manifest.csv`, so a separate v3 Kaggle dataset is unnecessary.
+Open `training/seal_ocr_finetune_standard.ipynb` in Kaggle or Google Colab.
 
-Select Kaggle's two-GPU accelerator. Run once with `RUN_MODE = 'smoke'`. After both one-epoch stages complete, change it to `RUN_MODE = 'full'` for the 60-epoch control followed by an 8-epoch low-learning-rate fine-tune. Each GPU uses base batch 32, preserving the old global base batch of 64.
+### Hardware Selection (`GPU_MODE`):
+- **1 GPU (`GPU_MODE = 1`)**:
+  - **Recommended** for Google Colab, Kaggle single GPU (P100 / T4), or whenever you want 100% reliable training without distributed overhead.
+  - Bypasses `paddle.distributed.launch` completely and runs `tools/train.py` directly.
+  - Global batch size: 64 (or 32 if VRAM constrained).
+- **2 GPUs (`GPU_MODE = 2`)**:
+  - For Kaggle 2x T4 accelerator.
+  - Uses `paddle.distributed.launch --gpus 0,1` with 32 batch size per card (= 64 global batch size).
+  - **Hang Fixes Applied**: Automatically sets `NCCL_P2P_DISABLE=1` and `NCCL_IB_DISABLE=1` to prevent NCCL virtual PCIe deadlocks, and `num_workers=0` to prevent Docker shared memory IPC deadlocks.
+  - Live stdout streaming is enabled so all iteration steps and losses show in real time in the notebook.
 
-The notebook creates `seal-ocr-rec-v1-rebuilt.zip` and `seal-ocr-rec-v5-candidate.zip`. Both contain inference artifacts and resumable `checkpoints/best_accuracy.pdparams`, `.pdopt`, and `.states`. Preserve both ZIP files outside the repository.
-
-Benchmark both exported inference folders against the frozen 300-image benchmark. Keep production v1 unless the rebuilt control is close to 248/300, and promote v5 only if it reaches at least 270/300 with no CER regression.
+### Execution Steps:
+1. Run once with `RUN_MODE = 'smoke'` to verify data loading, 1-epoch training, and model export.
+2. Change `RUN_MODE = 'full'` for the 60-epoch control baseline followed by 8-epoch low-learning-rate fine-tuning.
+   - Optional: set `SKIP_STAGE_1 = True` if you only want to fine-tune directly using the official pretrained checkpoint.
+3. The notebook exports:
+   - `seal-rec-v1.0.0-rebuilt.zip` (legacy: `seal-ocr-rec-v1-rebuilt.zip`)
+   - `seal-rec-v1.0.3.zip` (legacy: `seal-ocr-rec-v5-candidate.zip`)
+4. Download the exported models and benchmark against the benchmark suite. Promote `seal-rec-v1.0.3` if accuracy improves without regressions.

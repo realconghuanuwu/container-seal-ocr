@@ -13,7 +13,7 @@ GLOBAL_CARRIER_PREFIXES: list[str] = [
     "OOLKCK", "OOLKCM", "OOLKCR", "OOLKCL", "VNHPH",
     # 4-character shipping line & BIC carrier prefixes
     "OOLK", "SJJA", "YMAT", "YMAS", "YMAR", "WHAB", "WHAC", "WHLU",
-    "SITC", "SITA", "SITF", "SITH", "COSU", "MAEU", "MSCU",
+    "SITC", "SITR", "SITZ", "SITA", "SITF", "SITH", "COSU", "MAEU", "MSCU",
     "HLCU", "ONEY", "EGLV", "HDMU", "YMLU", "ZIMU", "PILU",
     "KMTU", "SMLU", "TSLU", "SKLU", "HASU", "RCOU", "SNTO",
     "SNTU", "ZGOU", "QASU", "MATU", "CMCU", "SBDU", "GRIU",
@@ -21,7 +21,7 @@ GLOBAL_CARRIER_PREFIXES: list[str] = [
     "HATS",
     # 3-character shipping line / courier codes
     "MSK", "MSC", "CMA", "CGM", "COS", "ONE", "HMM", "YML",
-    "WHL", "ZIM", "PIL", "KMT", "SML", "TSL", "RCL", "HLC",
+    "WHL", "WHA", "ZIM", "PIL", "KMT", "SML", "TSL", "RCL", "HLC",
     "TCS", "APL", "CNC", "ANL", "VNH", "EMC",
     # 2-character shipping line / express courier codes
     "FX", "SF", "ML", "EM", "CO", "MS", "HM", "HL",
@@ -34,6 +34,10 @@ CARRIER_EXACT_LENGTH_RULES: dict[str, int] = {
     "FX37": 10,
     "FX38": 10,
     "FX39": 10,
+    "FX40": 10,
+    "SITR": 10,
+    "SITZ": 10,
+    "WHA": 10,
     "WHLT": 10,
     "WHAB": 10,
     "SJJA": 10,
@@ -172,6 +176,13 @@ def _build_ctc_collapse_map() -> Dict[str, str]:
         "S1TC": "SITC",
         "YMA": "YMAT",      # Yang Ming truncation
         "SJA": "SJJA",      # JJ Shipping CTC collapse
+        "GITR": "SITR",     # SITC Logistics G/S optical confusion
+        "FGITR": "SITR",    # SITC bounding box edge noise
+        "SGITR": "SITR",    # SITC bounding box edge noise
+        "G6ITR": "SITR",    # SITC bounding box edge noise
+        "SIT7R": "SITR",    # SITC stroke split noise
+        "WH4": "WHA",       # Wan Hai 4/A optical confusion
+        "SIT27": "SITZ",    # SITC Z/27 stroke confusion
     }
 
     for prefix in GLOBAL_CARRIER_PREFIXES:

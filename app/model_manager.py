@@ -98,6 +98,9 @@ def format_model_display(model_id: str, settings: Settings) -> tuple[str, str]:
     elif rec_tag == "rec-v1.0.3":
         name = "Seal OCR (rec-v1.0.3)"
         desc = "Mô hình v1.0.3 fine-tuned trên 14,500 ảnh base + 100 ảnh manual"
+    elif rec_tag == "rec-v1.0.4":
+        name = "Seal OCR (rec-v1.0.4)"
+        desc = "Mô hình v1.0.4 2-stage (45 base + 10 oversample epochs, target >=90%)"
     else:
         name = f"Seal OCR ({rec_tag})"
         desc = f"Mô hình fine-tune nhận dạng ({model_id})"

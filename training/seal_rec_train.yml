@@ -72,9 +72,9 @@ Train:
   dataset:
     name: MultiScaleDataSet
     ds_width: false
-    data_dir: E:/Code/python/ocr/archive/ocr-service-artifacts/2026-09-21/seal-recognition-v4-manual/recognition_dataset_v4_complete
+    data_dir: E:/Code/python/ocr/archive/recognition_dataset_rec_v1.0.3
     ext_op_transform_idx: 1
-    label_file_list: [E:/Code/python/ocr/archive/ocr-service-artifacts/2026-09-21/seal-recognition-v4-manual/recognition_dataset_v4_complete/train.txt]
+    label_file_list: [E:/Code/python/ocr/archive/recognition_dataset_rec_v1.0.3/train.txt]
     ratio_list: [1.0]
     transforms:
       - DecodeImage: {img_mode: BGR, channel_first: false}
@@ -100,13 +100,13 @@ Train:
     shuffle: true
     batch_size_per_card: *train_batch
     drop_last: false
-    num_workers: 2
+    num_workers: 0
 
 Eval:
   dataset:
     name: SimpleDataSet
-    data_dir: E:/Code/python/ocr/archive/ocr-service-artifacts/2026-09-21/seal-recognition-v4-manual/recognition_dataset_v4_complete
-    label_file_list: [E:/Code/python/ocr/archive/ocr-service-artifacts/2026-09-21/seal-recognition-v4-manual/recognition_dataset_v4_complete/val.txt]
+    data_dir: E:/Code/python/ocr/archive/recognition_dataset_rec_v1.0.3
+    label_file_list: [E:/Code/python/ocr/archive/recognition_dataset_rec_v1.0.3/val.txt]
     transforms:
       - DecodeImage: {img_mode: BGR, channel_first: false}
       - MultiLabelEncode: {gtc_encode: NRTRLabelEncode}
@@ -116,4 +116,4 @@ Eval:
     shuffle: false
     drop_last: false
     batch_size_per_card: 64
-    num_workers: 2
+    num_workers: 0
