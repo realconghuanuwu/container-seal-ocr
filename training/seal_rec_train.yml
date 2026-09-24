@@ -1,15 +1,15 @@
-# Configuration for fine-tuning seal-ocr-rec-v2 on recognition_dataset_v2 (5,000 samples).
-# Derived from PaddleOCR v3.7.0's PP-OCRv6_medium_rec.yml.
+# Recognition v4: frozen recognition-v3 data plus 100 manually labeled photos.
+# Run with an official PP-OCRv6_medium_rec pretrained checkpoint on GPU.
 Global:
   model_name: PP-OCRv6_medium_rec
   use_gpu: true
-  seed: 20260918
+  seed: 20260921
   epoch_num: 60
   log_smooth_window: 20
   print_batch_step: 25
-  save_model_dir: ./training_runs/seal-ocr-rec-v2/checkpoints
+  save_model_dir: ./training_runs/seal-ocr-rec-v4-manual/checkpoints
   save_epoch_step: 10
-  eval_batch_step: [0, 281]
+  eval_batch_step: [0, 100]
   cal_metric_during_train: true
   pretrained_model:
   checkpoints:
@@ -27,8 +27,8 @@ Optimizer:
   beta2: 0.999
   lr:
     name: Cosine
-    learning_rate: 0.0001
-    warmup_epoch: 3
+    learning_rate: 0.00005
+    warmup_epoch: 2
   regularizer:
     name: L2
     factor: 3.0e-05
@@ -72,9 +72,9 @@ Train:
   dataset:
     name: MultiScaleDataSet
     ds_width: false
-    data_dir: ./recognition_dataset_v2
+    data_dir: E:/Code/python/ocr/archive/ocr-service-artifacts/2026-09-21/seal-recognition-v4-manual/recognition_dataset_v4_complete
     ext_op_transform_idx: 1
-    label_file_list: [./recognition_dataset_v2/train.txt]
+    label_file_list: [E:/Code/python/ocr/archive/ocr-service-artifacts/2026-09-21/seal-recognition-v4-manual/recognition_dataset_v4_complete/train.txt]
     ratio_list: [1.0]
     transforms:
       - DecodeImage: {img_mode: BGR, channel_first: false}
@@ -86,26 +86,27 @@ Train:
           jitter_prob: 0.05
           blur_prob: 0.10
           hsv_aug_prob: 0.15
+      - RandomCharacterSpacing: {prob: 0.35, min_segments: 3, max_segments: 6}
       - MultiLabelEncode: {gtc_encode: NRTRLabelEncode}
       - KeepKeys: {keep_keys: [image, label_ctc, label_gtc, length, valid_ratio]}
   sampler:
     name: MultiScaleSampler
     scales: [[320, 32], [320, 48], [320, 64]]
-    first_bs: &train_batch 16
+    first_bs: &train_batch 32
     fix_bs: false
     divided_factor: [8, 16]
     is_training: true
   loader:
     shuffle: true
     batch_size_per_card: *train_batch
-    drop_last: true
-    num_workers: 4
+    drop_last: false
+    num_workers: 2
 
 Eval:
   dataset:
     name: SimpleDataSet
-    data_dir: ./recognition_dataset_v2
-    label_file_list: [./recognition_dataset_v2/val.txt]
+    data_dir: E:/Code/python/ocr/archive/ocr-service-artifacts/2026-09-21/seal-recognition-v4-manual/recognition_dataset_v4_complete
+    label_file_list: [E:/Code/python/ocr/archive/ocr-service-artifacts/2026-09-21/seal-recognition-v4-manual/recognition_dataset_v4_complete/val.txt]
     transforms:
       - DecodeImage: {img_mode: BGR, channel_first: false}
       - MultiLabelEncode: {gtc_encode: NRTRLabelEncode}
@@ -114,5 +115,5 @@ Eval:
   loader:
     shuffle: false
     drop_last: false
-    batch_size_per_card: 16
+    batch_size_per_card: 64
     num_workers: 2

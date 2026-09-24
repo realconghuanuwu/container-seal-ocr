@@ -14,11 +14,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from PIL import Image
 
-from scripts.create_recognition_dataset_v2 import compute_phash
-from scripts.create_recognition_dataset_v3 import (
+from create_recognition_dataset_v2 import compute_phash
+from create_recognition_dataset_v3 import (
     QUOTAS,
     PHashIndex,
     _load_base_index,

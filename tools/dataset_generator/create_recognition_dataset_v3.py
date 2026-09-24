@@ -11,6 +11,7 @@ import random
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from collections import Counter
@@ -21,18 +22,35 @@ import cv2
 import numpy as np
 from PIL import Image
 
+CUR_DIR = Path(__file__).resolve().parent
+if str(CUR_DIR) not in sys.path:
+    sys.path.insert(0, str(CUR_DIR))
+
 from app.seal_registry import GLOBAL_CARRIER_PREFIXES, get_expected_seal_length
-from scripts.create_recognition_dataset_v2 import (
-    SUPPORTED_EXTENSIONS,
-    SealDetectorModel,
-    compute_phash,
-    compute_sha256,
-    evaluate_image_quality,
-    extract_best_candidate,
-    hamming_distance,
-    load_benchmark_index,
-    normalize_text,
-)
+try:
+    from create_recognition_dataset_v2 import (
+        SUPPORTED_EXTENSIONS,
+        SealDetectorModel,
+        compute_phash,
+        compute_sha256,
+        evaluate_image_quality,
+        extract_best_candidate,
+        hamming_distance,
+        load_benchmark_index,
+        normalize_text,
+    )
+except ImportError:
+    from .create_recognition_dataset_v2 import (
+        SUPPORTED_EXTENSIONS,
+        SealDetectorModel,
+        compute_phash,
+        compute_sha256,
+        evaluate_image_quality,
+        extract_best_candidate,
+        hamming_distance,
+        load_benchmark_index,
+        normalize_text,
+    )
 
 
 MODEL = "gemini-3.8-flash-high"

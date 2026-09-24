@@ -11,7 +11,6 @@ An application for recognizing **container seal numbers** from images. It automa
 - Detect images that are too small, dark, bright, or blurry and request a new photo.
 - Return the seal number, confidence, processing time, and detected region.
 - Provide an HTTP API for integration with other systems.
-- Provide a Flutter SDK for on-device or API-based recognition.
 
 ## Quick start with Docker
 
@@ -106,16 +105,26 @@ To change the model, image limits, or confidence thresholds, copy `.env.example`
 
 ```powershell
 python -m pip install -r requirements-test.txt
-python -m pytest -q
+python -m pytest tests/ -q
 ```
 
-## Flutter SDK
+## Prepare dataset for training
 
-The Flutter library is located in [`packages/container_seal_ocr`](packages/container_seal_ocr). It supports:
+To prepare a training dataset in the simplest way possible:
 
-- Offline recognition directly on a mobile device with ONNX Runtime.
-- Recognition through the HTTP API.
-- Images supplied as file paths or camera bytes.
-- Seal number cleanup and shipping-line identification from known prefixes.
+### Option 1: Filename as label (Recommended)
+Place seal photos in a folder and name each file with its seal number (e.g. `FX40295831.jpg`, `SITR722123.jpg`, `FX40295831_1.jpg`).
 
-See [`packages/container_seal_ocr/README.md`](packages/container_seal_ocr/README.md) for integration instructions.
+```powershell
+python scripts/prepare_dataset.py --input path/to/images --output path/to/prepared_dataset
+```
+
+### Option 2: Folder of images + `labels.csv`
+Place images in a folder and provide a 2-column CSV (`image,label`):
+
+```powershell
+python scripts/prepare_dataset.py --input path/to/images --output path/to/prepared_dataset
+```
+
+Add `--crop` to automatically crop seal regions using the YOLO detector. The script generates standard PaddleOCR `images/`, `train.txt`, `val.txt`, and `metadata.json`.
+

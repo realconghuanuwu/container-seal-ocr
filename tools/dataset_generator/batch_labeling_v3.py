@@ -18,13 +18,14 @@ from pathlib import Path
 from typing import Any, Iterable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import cv2
 import numpy as np
 from PIL import Image
 
 from app.seal_registry import GLOBAL_CARRIER_PREFIXES, get_expected_seal_length
-from scripts.create_recognition_dataset_v2 import (
+from create_recognition_dataset_v2 import (
     SUPPORTED_EXTENSIONS,
     SealDetectorModel,
     compute_phash,
@@ -35,7 +36,7 @@ from scripts.create_recognition_dataset_v2 import (
     load_benchmark_index,
     normalize_text,
 )
-from scripts.create_recognition_dataset_v3 import (
+from create_recognition_dataset_v3 import (
     HARD_FAMILIES,
     LABEL_RE,
     QUOTAS,
@@ -968,7 +969,7 @@ def run_pipeline(
 
     if views.get("complete"):
         print("\nALL 15,000 CROPS COMPLETED! Finalizing v3 dataset...")
-        from scripts.finalize_dataset_v3 import finalize_dataset
+        from finalize_dataset_v3 import finalize_dataset
         out_dataset = Path(os.getenv("V3_DATASET_DIR", "data/recognition_dataset_v3"))
         fin_res = finalize_dataset(
             base_dataset=v2_dir,

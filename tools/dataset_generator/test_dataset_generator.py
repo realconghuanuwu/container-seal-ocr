@@ -1,11 +1,17 @@
 import json
 import random
 import subprocess
+import sys
+from pathlib import Path
 
 import cv2
 import numpy as np
 
-from scripts.create_recognition_dataset_v3 import (
+CUR_DIR = Path(__file__).resolve().parent
+if str(CUR_DIR) not in sys.path:
+    sys.path.insert(0, str(CUR_DIR))
+
+from create_recognition_dataset_v3 import (
     PHashIndex,
     load_latest_state,
     parse_agy_output,
@@ -13,8 +19,8 @@ from scripts.create_recognition_dataset_v3 import (
     run_agy,
     valid_label,
 )
-from scripts.finalize_dataset_v3 import choose_validation_groups
-from scripts.review_tool_v2 import resolve_source_path
+from finalize_dataset_v3 import choose_validation_groups
+from review_tool_v2 import resolve_source_path
 from training import random_character_spacing
 
 
@@ -97,7 +103,7 @@ def test_exact_group_split_and_spacing_transform(monkeypatch):
 
 
 def test_batch_labeling_export_and_evaluate_calibration(tmp_path):
-    from scripts.batch_labeling_v3 import evaluate_calibration, export_calibration, parse_labeling_json
+    from batch_labeling_v3 import evaluate_calibration, export_calibration, parse_labeling_json
 
     # Setup fake v2 dataset
     v2_dir = tmp_path / "v2"
@@ -136,7 +142,7 @@ def test_batch_labeling_export_and_evaluate_calibration(tmp_path):
 
 def test_batch_labeling_import_and_label(tmp_path, monkeypatch):
     import subprocess
-    from scripts.batch_labeling_v3 import import_batch, label_batch
+    from batch_labeling_v3 import import_batch, label_batch
 
     work_dir = tmp_path / "work"
     work_dir.mkdir(parents=True)

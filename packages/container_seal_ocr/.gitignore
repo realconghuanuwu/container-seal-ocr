@@ -1,7 +1,0 @@
-# Flutter & Dart generated files (Machine-specific local caches)
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-build/
-pubspec.lock
