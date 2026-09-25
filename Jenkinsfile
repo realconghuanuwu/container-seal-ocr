@@ -18,23 +18,27 @@ pipeline {
     stages {
         stage('Checkout & Git LFS') {
             steps {
-                echo 'Checking out source code and ensuring Git LFS model weights...'
-                checkout scm
+                echo 'Ensuring Git LFS model weights...'
                 sh '''
-                    # Pull Git LFS objects if git-lfs is available on agent
-                    if git lfs version >/dev/null 2>&1; then
-                        echo "Git LFS detected, pulling model binary files..."
-                        git lfs pull
-                    else
-                        echo "Notice: git-lfs command not in PATH, verifying model files exist..."
+                    # If git-lfs is missing in system PATH, auto-download standalone binary for Linux
+                    if ! command -v git-lfs >/dev/null 2>&1; then
+                        echo "Notice: git-lfs not found in system PATH. Auto-downloading standalone git-lfs..."
+                        mkdir -p .git-lfs-bin
+                        curl -sL https://github.com/git-lfs/git-lfs/releases/download/v3.5.1/git-lfs-linux-amd64-v3.5.1.tar.gz | tar -xz -C .git-lfs-bin
+                        export PATH="$PWD/.git-lfs-bin:$PATH"
                     fi
+
+                    echo "Git LFS version: $(git lfs version 2>/dev/null || git-lfs version 2>/dev/null || true)"
+                    git lfs install --local 2>/dev/null || true
+                    git lfs pull || true
 
                     # Sanity check model weight files are not small LFS pointers
                     if [ -f models/seal-det-v1.0.0/best.onnx ]; then
                         SIZE=$(wc -c < models/seal-det-v1.0.0/best.onnx)
+                        echo "Verified models/seal-det-v1.0.0/best.onnx size: $SIZE bytes"
                         if [ "$SIZE" -lt 1000 ]; then
                             echo "ERROR: models/seal-det-v1.0.0/best.onnx is an un-downloaded Git LFS pointer ($SIZE bytes)!"
-                            echo "Please install git-lfs on the Jenkins node or run 'git lfs pull'."
+                            echo "Please run: 'sudo apt-get install -y git-lfs' on server or enable 'Git LFS pull after checkout' in Jenkins."
                             exit 1
                         fi
                     fi
