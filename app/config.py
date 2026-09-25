@@ -50,6 +50,7 @@ class Settings:
     seal_detector_padding_x: float = float(os.getenv("SEAL_DETECTOR_PADDING_X", "0.35"))
     seal_detector_padding_y: float = float(os.getenv("SEAL_DETECTOR_PADDING_Y", "0.20"))
     seal_detector_max_regions: int = int(os.getenv("SEAL_DETECTOR_MAX_REGIONS", "3"))
+    text_det_unclip_ratio: float = float(os.getenv("TEXT_DET_UNCLIP_RATIO", "1.60"))
     model_version: str = os.getenv("MODEL_VERSION", "pp-ocrv6-medium-base")
     app_env: str = os.getenv("APP_ENV", "standard")
 

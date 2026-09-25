@@ -18,7 +18,7 @@ from .config import Settings
 from .image import ImageError, prepare, quality_reason, resize
 from .model_manager import list_available_models, resolve_model
 from .postprocess import classify, clean_seal_number, normalize, valid
-from .schemas import Candidate, Detection, OcrResponse
+from .schemas import Candidate, Detection, OcrResponse, TextLine
 from .seal_detector import create_detector
 from .seal_registry import get_expected_seal_length, SORTED_CARRIER_PREFIXES
 from .worker import OcrWorker, WorkerBusy, WorkerError, WorkerTimeout, WorkerUnavailable
@@ -60,6 +60,43 @@ def stitch_multiline_candidates(candidates: list[Candidate], settings: Settings)
     return stitched
 
 
+def deduplicate_text_lines(candidates: list[Candidate]) -> list[TextLine]:
+    valid_cands = [c for c in candidates if c.polygon and len(c.polygon) >= 3 and c.text.strip()]
+    if not valid_cands:
+        return []
+
+    def get_bbox(poly):
+        xs = [pt[0] for pt in poly]
+        ys = [pt[1] for pt in poly]
+        return min(xs), min(ys), max(xs), max(ys)
+
+    def calc_overlap(b1, b2):
+        x1 = max(b1[0], b2[0])
+        y1 = max(b1[1], b2[1])
+        x2 = min(b1[2], b2[2])
+        y2 = min(b1[3], b2[3])
+        if x2 <= x1 or y2 <= y1:
+            return 0.0
+        inter = (x2 - x1) * (y2 - y1)
+        area1 = (b1[2] - b1[0]) * (b1[3] - b1[1])
+        area2 = (b2[2] - b2[0]) * (b2[3] - b2[1])
+        min_area = min(area1, area2)
+        return inter / min_area if min_area > 0 else 0.0
+
+    sorted_cands = sorted(valid_cands, key=lambda c: c.confidence, reverse=True)
+    kept: list[TextLine] = []
+    kept_bboxes = []
+
+    for c in sorted_cands:
+        bbox = get_bbox(c.polygon)
+        if any(calc_overlap(bbox, kb) > 0.40 for kb in kept_bboxes):
+            continue
+        kept.append(TextLine(polygon=c.polygon, text=c.text.strip(), confidence=c.confidence))
+        kept_bboxes.append(bbox)
+
+    return kept
+
+
 async def run_ocr_pipeline(
     image_data: bytes,
     content_type: str | None,
@@ -83,6 +120,7 @@ async def run_ocr_pipeline(
     image_width = None
     image_height = None
     http_status = 200
+    text_lines = []
 
     async def bounded(call, *args):
         remaining = effective_deadline - time.monotonic()
@@ -137,24 +175,57 @@ async def run_ocr_pipeline(
                 )
             else:
                 zero_degree_candidates = []
-                for region in regions:
-                    zero_degree_candidates.extend(
-                        await bounded(worker.infer, region, effective_deadline)
-                    )
+                zero_degree_candidates = []
+                for idx, region in enumerate(regions):
+                    cands = await bounded(worker.infer, region, effective_deadline)
+                    offset_x = detections[idx]["x"] if idx < len(detections) else 0
+                    offset_y = detections[idx]["y"] if idx < len(detections) else 0
+                    mapped_cands = []
+                    for c in cands:
+                        if c.polygon:
+                            mapped_poly = [[round(pt[0] + offset_x), round(pt[1] + offset_y)] for pt in c.polygon]
+                        else:
+                            mapped_poly = []
+                        mapped_cands.append(Candidate(text=c.text, confidence=c.confidence, polygon=mapped_poly))
+                    zero_degree_candidates.extend(mapped_cands)
                 candidates = list(zero_degree_candidates)
                 active_regions = list(regions)
 
                 if enable_tta:
-                    # Multi-Angle TTA: if 0° orientation yielded no valid candidate (e.g. vertical/hanging seals)
-                    if not any(valid(clean_seal_number(c.text), worker_settings) and c.confidence >= worker_settings.review_threshold for c in candidates):
+                    # Multi-Angle TTA: trigger if 0° yielded no valid candidate, or for vertical hanging seals without high confidence
+                    is_vertical = any(r.shape[0] > 1.25 * r.shape[1] for r in regions)
+                    has_valid = any(
+                        valid(clean_seal_number(c.text), worker_settings)
+                        and c.confidence >= worker_settings.review_threshold
+                        for c in candidates
+                    )
+                    has_top_conf = any(
+                        valid(clean_seal_number(c.text), worker_settings)
+                        and c.confidence >= 0.95
+                        for c in candidates
+                    )
+                    if not has_valid or (is_vertical and not has_top_conf):
                         for rot_code in (cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_90_COUNTERCLOCKWISE):
                             rot_candidates = []
                             rot_regions = [cv2.rotate(region, rot_code) for region in regions]
-                            for rot_region in rot_regions:
+                            for idx, rot_region in enumerate(rot_regions):
                                 rot_c = await bounded(worker.infer, rot_region, effective_deadline)
-                                rot_candidates.extend(rot_c)
+                                orig_h, orig_w = regions[idx].shape[:2]
+                                offset_x = detections[idx]["x"] if idx < len(detections) else 0
+                                offset_y = detections[idx]["y"] if idx < len(detections) else 0
+                                mapped_c = []
+                                for cand in rot_c:
+                                    if cand.polygon:
+                                        if rot_code == cv2.ROTATE_90_CLOCKWISE:
+                                            unrot_poly = [[round(pt[1] + offset_x), round((orig_h - 1 - pt[0]) + offset_y)] for pt in cand.polygon]
+                                        else:
+                                            unrot_poly = [[round((orig_w - 1 - pt[1]) + offset_x), round(pt[0] + offset_y)] for pt in cand.polygon]
+                                    else:
+                                        unrot_poly = []
+                                    mapped_c.append(Candidate(text=cand.text, confidence=cand.confidence, polygon=unrot_poly))
+                                rot_candidates.extend(mapped_c)
                             candidates.extend(rot_candidates)
-                            if any(valid(clean_seal_number(c.text), worker_settings) and c.confidence >= worker_settings.review_threshold for c in rot_candidates):
+                            if any(valid(clean_seal_number(c.text), worker_settings) and c.confidence >= 0.95 for c in rot_candidates):
                                 active_regions = rot_regions
                                 break
 
@@ -196,6 +267,9 @@ async def run_ocr_pipeline(
 
                 # Prefix-Serial Stitching: for two-tier / multi-line stamped seals
                 candidates = stitch_multiline_candidates(candidates, worker_settings)
+
+                # Collect cleanly deduplicated text line polygons for interactive visualization
+                text_lines = deduplicate_text_lines(candidates)
 
                 candidate_count = len(candidates)
                 response = classify(candidates, worker_settings)
@@ -247,6 +321,7 @@ async def run_ocr_pipeline(
     response.imageWidth = image_width
     response.imageHeight = image_height
     response.detections = [Detection(**item) for item in detections]
+    response.textLines = text_lines
     log_meta = {
         "processingTimeMs": response.processingTimeMs,
         "modelVersion": active_version,

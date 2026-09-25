@@ -268,6 +268,12 @@
       transition: border-color .18s, background-color .18s;
     }
     .dropzone:hover, .dropzone.dragging { border-color: var(--accent); background: #e3ede7; }
+    .dropzone.has-image {
+      border: 1px solid var(--line);
+      background: #202722;
+      cursor: default;
+      padding: 0;
+    }
     .dropzone input[type="file"] {
       position: absolute;
       inset: 0;
@@ -276,16 +282,97 @@
       cursor: pointer;
       opacity: 0;
     }
+    .dropzone.has-image input[type="file"] {
+      display: none;
+      pointer-events: none;
+    }
 
     .empty-state { max-width: 320px; padding: 24px; text-align: center; color: var(--muted); }
     .empty-state strong { display: block; margin-bottom: 7px; color: var(--ink); font-size: 1.05rem; }
 
+    .preview-wrapper {
+      display: none;
+      width: 100%;
+      height: 380px;
+      min-height: 380px;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #242a26;
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      position: relative;
+    }
+    .preview-wrapper.dragging-active,
+    .preview-wrapper.dragging-active canvas {
+      cursor: grabbing !important;
+    }
     .preview-canvas {
       display: none;
       width: 100%;
-      height: 320px;
-      min-height: 320px;
+      height: 100%;
       background: #242a26;
+      cursor: inherit;
+    }
+    .preview-wrapper.side-by-side {
+      display: flex !important;
+    }
+    .preview-wrapper.side-by-side .preview-canvas {
+      width: 50% !important;
+      display: block !important;
+    }
+    .preview-canvas.vector-canvas {
+      background: #ffffff;
+      border-left: 2px solid var(--line);
+    }
+    .view-mode-btn.active {
+      background: var(--accent) !important;
+      color: #fff !important;
+      border-color: var(--accent) !important;
+    }
+    .pipeline-steps-card {
+      margin-top: 24px;
+      grid-column: 1 / -1;
+    }
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 14px;
+    }
+    .step-item {
+      background: #eef3f0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .step-item:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+    .step-title {
+      font-weight: 800;
+      font-size: 0.85rem;
+      letter-spacing: 0.02em;
+      margin-bottom: 4px;
+    }
+    .step-desc {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+    .step-meta {
+      font-size: 0.84rem;
+      font-weight: 750;
+      font-family: ui-monospace, monospace;
+      color: var(--ink);
+      padding: 4px 8px;
+      background: #fff;
+      border-radius: 6px;
+      border: 1px solid #d4e0d9;
+      word-break: break-all;
     }
 
     .viewer-tools {
@@ -678,22 +765,36 @@
     <section class="tab-pane active" id="paneSingle" role="tabpanel">
       <div class="single-layout">
         <div class="panel-card upload-pane">
-          <h2 class="panel-title">Ảnh seal tải lên</h2>
-          <p class="hint">JPEG, PNG hoặc WEBP · kéo thả ảnh trực tiếp</p>
-          <label class="dropzone" id="dropzone" tabindex="0">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+            <div>
+              <h2 class="panel-title" style="margin: 0;">Ảnh seal tải lên</h2>
+              <p class="hint" style="margin: 4px 0 0;">JPEG, PNG hoặc WEBP · kéo thả ảnh trực tiếp</p>
+            </div>
+            <div class="view-mode-tabs" id="viewModeTabs" style="display: none; gap: 6px;">
+              <button type="button" class="button secondary view-mode-btn" id="btnModeStandard" style="padding: 2px 10px; font-size: 0.8rem; min-height: 28px;">Chuẩn (Overlay)</button>
+              <button type="button" class="button secondary view-mode-btn active" id="btnModeStudio" style="padding: 2px 10px; font-size: 0.8rem; min-height: 28px;" title="Xem song song 2 bảng như web demo PP-OCR v6">PP-OCR v6 Studio</button>
+            </div>
+          </div>
+          <div class="dropzone" id="dropzone" tabindex="0">
             <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp">
-            <span class="empty-state" id="emptyPreview">
+            <span class="empty-state" id="emptyPreview" role="button" tabindex="0">
               <strong>Chọn hoặc thả ảnh vào đây</strong>
-              Hỗ trợ xoay ảnh, phóng to và hiển thị bounding box của detector.
+              Hỗ trợ xoay ảnh, kéo chuột để di chuyển (Pan), cuộn chuột phóng to, hiển thị bounding box YOLO và polygon text lines.
             </span>
-            <canvas class="preview-canvas" id="preview" aria-label="Ảnh seal và vùng detector"></canvas>
-          </label>
+            <div class="preview-wrapper" id="previewWrapper">
+              <canvas class="preview-canvas" id="preview" aria-label="Ảnh seal và vùng detector"></canvas>
+              <canvas class="preview-canvas vector-canvas" id="previewVector" aria-label="Bản đồ text lines vector (PP-OCR v6 style)"></canvas>
+            </div>
+          </div>
           <div class="viewer-tools" id="viewerTools">
             <button class="button secondary" id="rotateLeft" type="button" title="Xoay trái 90°">↶ 90°</button>
             <button class="button secondary" id="rotateRight" type="button" title="Xoay phải 90°">↷ 90°</button>
             <input id="zoom" type="range" min="0.5" max="4" value="1" step="0.1" aria-label="Mức zoom">
             <span class="zoom-value" id="zoomValue">100%</span>
-            <button class="button secondary" id="resetView" type="button">Reset</button>
+            <button class="button secondary" id="resetView" type="button" title="Khôi phục góc nhìn gốc (Reset zoom & vị trí)">Reset</button>
+            <span class="viewer-hint" style="margin-left: auto; font-size: 0.78rem; color: var(--muted); display: inline-flex; align-items: center; gap: 4px;">
+              🖱️ Kéo chuột di chuyển (Pan) · Cuộn chuột để Zoom
+            </span>
           </div>
           <p class="file-meta" id="fileMeta" aria-live="polite">Chưa chọn ảnh</p>
           <div class="actions">
@@ -727,6 +828,36 @@
               <summary>Xem phản hồi JSON gốc</summary>
               <pre class="code-block" id="jsonOutput"></pre>
             </details>
+          </div>
+        </div>
+      </div>
+
+      <!-- PIPELINE STEP-BY-STEP EXPLAINER CARD FOR CLIENT DEMO -->
+      <div class="panel-card pipeline-steps-card" id="pipelineStepsCard" style="display: none;">
+        <h3 class="panel-title" style="font-size: 1.22rem; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between;">
+          <span>⚡ Hành trình 4 bước xử lý của Pipeline (Giải thích cho khách hàng)</span>
+          <span style="font-size: 0.8rem; font-weight: normal; color: var(--muted);">Kiến trúc 2-Stage + Smart TTA + ISO Post-processing</span>
+        </h3>
+        <div class="steps-grid">
+          <div class="step-item">
+            <div class="step-title" style="color: #176c4c;">🎯 BƯỚC 1: YOLO SEAL DETECTION</div>
+            <div class="step-desc">Khoanh vùng chính xác vị trí chốt seal trên cửa container, loại bỏ 90% tạp âm môi trường và nền sắt.</div>
+            <div class="step-meta" id="step1Meta">Chưa chạy</div>
+          </div>
+          <div class="step-item">
+            <div class="step-title" style="color: #2179c9;">🔄 BƯỚC 2: DBNet TEXT LOCALIZATION</div>
+            <div class="step-desc">Định vị đường bao polygon từng dòng chữ; tự động xoay 90° nếu seal treo dọc để tránh dính chữ song song.</div>
+            <div class="step-meta" id="step2Meta">Chưa chạy</div>
+          </div>
+          <div class="step-item">
+            <div class="step-title" style="color: #8c5b12;">🔍 BƯỚC 3: TEXT RECOGNITION (v1.0.4)</div>
+            <div class="step-desc">Mô hình v1.0.4 2-stage fine-tune giải mã chuỗi ký tự từng polygon, khắc phục triệt để lỗi CTC collapse.</div>
+            <div class="step-meta" id="step3Meta">Chưa chạy</div>
+          </div>
+          <div class="step-item">
+            <div class="step-title" style="color: #10241e;">🛡️ BƯỚC 4: POST-PROCESS & VALIDATION</div>
+            <div class="step-desc">Khử nhiễu quang học, phục hồi tiền tố hãng tàu (SITC, OOLK, MSC...) và xác thực theo chuẩn ISO 17712.</div>
+            <div class="step-meta" id="step4Meta">Chưa chạy</div>
           </div>
         </div>
       </div>
@@ -954,6 +1085,18 @@
     const modelSelect = document.querySelector('#modelSelect');
     const modelSwitchStatus = document.querySelector('#modelSwitchStatus');
 
+    const previewVector = document.querySelector('#previewVector');
+    const vctx = previewVector ? previewVector.getContext('2d') : null;
+    const previewWrapper = document.querySelector('#previewWrapper');
+    const viewModeTabs = document.querySelector('#viewModeTabs');
+    const btnModeStandard = document.querySelector('#btnModeStandard');
+    const btnModeStudio = document.querySelector('#btnModeStudio');
+    const pipelineStepsCard = document.querySelector('#pipelineStepsCard');
+    const step1Meta = document.querySelector('#step1Meta');
+    const step2Meta = document.querySelector('#step2Meta');
+    const step3Meta = document.querySelector('#step3Meta');
+    const step4Meta = document.querySelector('#step4Meta');
+
     const toggleDetector = document.querySelector('#toggleDetector');
     const toggleBarcode = document.querySelector('#toggleBarcode');
     const toggleTta = document.querySelector('#toggleTta');
@@ -962,7 +1105,16 @@
     let currentImage = null;
     let rotation = 0;
     let zoom = 1;
+    let panX = 0;
+    let panY = 0;
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let startPanX = 0;
+    let startPanY = 0;
     let detections = [];
+    let textLines = [];
+    let previewMode = 'studio';
     let isSwitchingModel = false;
 
     // BATCH STATE
@@ -1103,15 +1255,45 @@
     });
 
     // =========================================================================
-    // SINGLE IMAGE VIEW
+    // SINGLE IMAGE VIEW & PP-OCR v6 STUDIO MODE
     // =========================================================================
+    const POLY_PALETTE = [
+      { stroke: '#a8cc3b', fill: 'rgba(180, 215, 60, 0.40)' },
+      { stroke: '#26c6da', fill: 'rgba(38, 198, 218, 0.35)' },
+      { stroke: '#66bb6a', fill: 'rgba(102, 187, 106, 0.38)' },
+      { stroke: '#ab47bc', fill: 'rgba(171, 71, 188, 0.35)' },
+      { stroke: '#5c6bc0', fill: 'rgba(92, 107, 192, 0.38)' },
+      { stroke: '#ffa726', fill: 'rgba(255, 167, 38, 0.38)' },
+    ];
+
+    if (btnModeStandard && btnModeStudio) {
+      btnModeStandard.addEventListener('click', (e) => {
+        e.stopPropagation();
+        previewMode = 'standard';
+        btnModeStandard.classList.add('active');
+        btnModeStudio.classList.remove('active');
+        if (previewWrapper) previewWrapper.classList.remove('side-by-side');
+        if (previewVector) previewVector.style.display = 'none';
+        drawPreview();
+      });
+      btnModeStudio.addEventListener('click', (e) => {
+        e.stopPropagation();
+        previewMode = 'studio';
+        btnModeStudio.classList.add('active');
+        btnModeStandard.classList.remove('active');
+        if (previewWrapper) previewWrapper.classList.add('side-by-side');
+        if (previewVector) previewVector.style.display = 'block';
+        drawPreview();
+      });
+    }
+
     function drawPreview() {
       if (!currentImage) return;
       const w = preview.width = preview.clientWidth || 320;
-      const h = preview.height = preview.clientHeight || 320;
+      const h = preview.height = preview.clientHeight || 340;
       ctx.clearRect(0, 0, w, h);
       ctx.save();
-      ctx.translate(w / 2, h / 2);
+      ctx.translate(w / 2 + panX, h / 2 + panY);
       ctx.rotate((rotation * Math.PI) / 180);
       ctx.scale(zoom, zoom);
 
@@ -1124,12 +1306,13 @@
 
       ctx.drawImage(currentImage, -imgW / 2, -imgH / 2, imgW, imgH);
 
-      if (detections && detections.length > 0) {
-        const origW = currentImage.naturalWidth || currentImage.width;
-        const origH = currentImage.naturalHeight || currentImage.height;
-        const scaleX = imgW / origW;
-        const scaleY = imgH / origH;
+      const origW = currentImage.naturalWidth || currentImage.width;
+      const origH = currentImage.naturalHeight || currentImage.height;
+      const scaleX = imgW / origW;
+      const scaleY = imgH / origH;
 
+      // 1. Draw YOLO Seal Detection Bounding Box (Clean thin outline, no blocking badges)
+      if (detections && detections.length > 0) {
         detections.forEach((det, i) => {
           const rx = -imgW / 2 + det.x * scaleX;
           const ry = -imgH / 2 + det.y * scaleY;
@@ -1137,24 +1320,125 @@
           const rh = det.height * scaleY;
 
           ctx.strokeStyle = i === 0 ? '#176c4c' : '#2179c9';
-          ctx.lineWidth = 3;
+          ctx.lineWidth = 2;
           ctx.strokeRect(rx, ry, rw, rh);
 
+          // Subtle badge at top edge
           ctx.fillStyle = i === 0 ? 'rgba(23, 108, 76, 0.85)' : 'rgba(33, 121, 201, 0.85)';
           const badgeText = `Seal ${(det.confidence * 100).toFixed(0)}%`;
-          ctx.font = 'bold 11px sans-serif';
+          ctx.font = 'bold 10px sans-serif';
           const textW = ctx.measureText(badgeText).width;
-          ctx.fillRect(rx, ry - 18, textW + 8, 18);
+          ctx.fillRect(rx, ry - 16, textW + 6, 16);
           ctx.fillStyle = '#fff';
-          ctx.fillText(badgeText, rx + 4, ry - 4);
+          ctx.fillText(badgeText, rx + 3, ry - 4);
+        });
+      }
+
+      // 2. Draw DBNet Text Line Polygons (Clean translucent overlays, NO TEXT TAGS blocking the view)
+      if (textLines && textLines.length > 0) {
+        textLines.forEach((tl, idx) => {
+          if (!tl.polygon || tl.polygon.length < 3) return;
+          const col = POLY_PALETTE[idx % POLY_PALETTE.length];
+          ctx.beginPath();
+          tl.polygon.forEach((pt, pidx) => {
+            const px = -imgW / 2 + pt[0] * scaleX;
+            const py = -imgH / 2 + pt[1] * scaleY;
+            if (pidx === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          });
+          ctx.closePath();
+          ctx.fillStyle = col.fill;
+          ctx.fill();
+          ctx.strokeStyle = col.stroke;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
         });
       }
       ctx.restore();
+
+      // 3. Draw Vector White Canvas (PP-OCR v6 Studio Mode - Exact clone of Image 2)
+      if (previewMode === 'studio' && previewVector && vctx) {
+        const vw = previewVector.width = previewVector.clientWidth || 320;
+        const vh = previewVector.height = previewVector.clientHeight || 340;
+        vctx.clearRect(0, 0, vw, vh);
+        vctx.fillStyle = '#ffffff';
+        vctx.fillRect(0, 0, vw, vh);
+
+        vctx.save();
+        vctx.translate(vw / 2 + panX, vh / 2 + panY);
+        vctx.rotate((rotation * Math.PI) / 180);
+        vctx.scale(zoom, zoom);
+
+        const vscale = Math.min((vw * .9) / drawnW, (vh * .9) / drawnH, 1);
+        const vimgW = currentImage.width * vscale;
+        const vimgH = currentImage.height * vscale;
+        const vscaleX = vimgW / origW;
+        const vscaleY = vimgH / origH;
+
+        if (textLines && textLines.length > 0) {
+          textLines.forEach((tl, idx) => {
+            if (!tl.polygon || tl.polygon.length < 3) return;
+            const col = POLY_PALETTE[idx % POLY_PALETTE.length];
+            vctx.beginPath();
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            tl.polygon.forEach((pt, pidx) => {
+              const px = -vimgW / 2 + pt[0] * vscaleX;
+              const py = -vimgH / 2 + pt[1] * vscaleY;
+              minX = Math.min(minX, px);
+              minY = Math.min(minY, py);
+              maxX = Math.max(maxX, px);
+              maxY = Math.max(maxY, py);
+              if (pidx === 0) vctx.moveTo(px, py);
+              else vctx.lineTo(px, py);
+            });
+            vctx.closePath();
+            vctx.strokeStyle = col.stroke;
+            vctx.lineWidth = 1.2;
+            vctx.stroke();
+
+            // Render recognized text inside polygon exactly like PP-OCR v6 demo
+            vctx.fillStyle = '#10241e';
+            const boxW = Math.max(8, maxX - minX);
+            const boxH = Math.max(8, maxY - minY);
+            const isVerticalBox = boxH > boxW * 1.15;
+
+            if (isVerticalBox) {
+              // Vertical text line: render characters stacked top-to-bottom
+              const charCount = Math.max(1, tl.text.length);
+              const charH = boxH / charCount;
+              const fontSize = Math.max(8, Math.min(Math.round(boxW * 0.75), Math.round(charH * 0.85), 20));
+              vctx.font = `${fontSize}px "SimSun", "Times New Roman", Georgia, serif, monospace`;
+              vctx.textAlign = 'center';
+              vctx.textBaseline = 'middle';
+              const cx = minX + boxW / 2;
+              for (let ci = 0; ci < charCount; ci++) {
+                const cy = minY + (ci + 0.5) * charH;
+                vctx.fillText(tl.text[ci], cx, cy);
+              }
+            } else {
+              // Horizontal text line: render horizontally fitted to box
+              const fontSize = Math.max(8, Math.min(Math.round(boxH * 0.72), Math.round((boxW * 0.95) / Math.max(1, tl.text.length) * 1.5), 18));
+              vctx.font = `${fontSize}px "SimSun", "Times New Roman", Georgia, serif, monospace`;
+              vctx.textAlign = 'center';
+              vctx.textBaseline = 'middle';
+              vctx.fillText(tl.text, minX + boxW / 2, minY + boxH / 2);
+            }
+          });
+        } else {
+          vctx.fillStyle = '#7a8c84';
+          vctx.font = '13px sans-serif';
+          vctx.textAlign = 'center';
+          vctx.fillText('Bấm "Đọc số seal từ ảnh" để xem bản đồ vector', 0, 0);
+        }
+        vctx.restore();
+      }
     }
 
-    function setView(r, z) {
+    function setView(r, z, px, py) {
       rotation = (r % 360 + 360) % 360;
       zoom = Math.max(.5, Math.min(4, z !== undefined ? z : zoom));
+      if (px !== undefined) panX = px;
+      if (py !== undefined) panY = py;
       zoomInput.value = zoom;
       zoomValue.textContent = `${Math.round(zoom * 100)}%`;
       drawPreview();
@@ -1168,13 +1452,24 @@
         currentImage = new Image();
         currentImage.onload = () => {
           emptyPreview.style.display = 'none';
+          dropzone.classList.add('has-image');
+          if (previewWrapper) {
+            previewWrapper.style.display = 'flex';
+            if (previewMode === 'studio') {
+              previewWrapper.classList.add('side-by-side');
+              if (previewVector) previewVector.style.display = 'block';
+            }
+          }
           preview.style.display = 'block';
+          if (viewModeTabs) viewModeTabs.style.display = 'flex';
           viewerTools.style.display = 'flex';
           submitButton.disabled = false;
           clearButton.disabled = false;
           fileMeta.textContent = `${file.name} · ${(file.size / 1024).toFixed(1)} KB · ${currentImage.naturalWidth}×${currentImage.naturalHeight} px`;
           detections = [];
-          setView(0, 1);
+          textLines = [];
+          if (pipelineStepsCard) pipelineStepsCard.style.display = 'none';
+          setView(0, 1, 0, 0);
         };
         currentImage.src = e.target.result;
       };
@@ -1184,9 +1479,16 @@
     function clearFile() {
       currentFile = null;
       currentImage = null;
+      panX = 0;
+      panY = 0;
       detections = [];
+      textLines = [];
       fileInput.value = '';
+      dropzone.classList.remove('has-image');
+      if (previewWrapper) previewWrapper.style.display = 'none';
       preview.style.display = 'none';
+      if (previewVector) previewVector.style.display = 'none';
+      if (viewModeTabs) viewModeTabs.style.display = 'none';
       viewerTools.style.display = 'none';
       emptyPreview.style.display = 'block';
       submitButton.disabled = true;
@@ -1194,6 +1496,7 @@
       fileMeta.textContent = 'Chưa chọn ảnh';
       resultBox.style.display = 'none';
       resultEmpty.style.display = 'block';
+      if (pipelineStepsCard) pipelineStepsCard.style.display = 'none';
     }
 
     async function submitSingle() {
@@ -1242,12 +1545,40 @@
       text('reason', data.reason || '—');
 
       detections = data.detections || [];
+      textLines = data.textLines || [];
       text('detectionCount', `${detections.length} vùng seal`);
       drawPreview();
       document.querySelector('#jsonOutput').textContent = JSON.stringify(data, null, 2);
+
+      // Populate 4-step pipeline execution explainer card for client demo
+      if (pipelineStepsCard) {
+        pipelineStepsCard.style.display = 'block';
+        const dCount = detections.length;
+        const dScore = dCount > 0 ? (detections[0].confidence * 100).toFixed(1) + '%' : 'N/A';
+        if (step1Meta) step1Meta.textContent = `${dCount} vùng phát hiện (Confidence cao nhất: ${dScore})`;
+
+        const tCount = textLines.length;
+        const isVertical = (data.imageHeight && data.imageWidth && data.imageHeight > 1.20 * data.imageWidth);
+        if (step2Meta) step2Meta.textContent = `${tCount} text line polygons (${isVertical ? 'Seal thanh đứng: Đã kích hoạt xoay 90° TTA' : 'Seal ngang: 0° tiêu chuẩn'})`;
+
+        const sampleTexts = textLines.map(t => `${t.text} (${(t.confidence * 100).toFixed(0)}%)`).slice(0, 3).join(' | ');
+        if (step3Meta) step3Meta.textContent = sampleTexts || data.rawText || '—';
+
+        if (step4Meta) step4Meta.textContent = `Số seal: ${data.sealNumber || '(Không có)'} — Trạng thái: ${data.status} (${data.confidence ? (data.confidence * 100).toFixed(1) + '%' : '—'})`;
+      }
     }
 
     // Events for single image
+    emptyPreview.addEventListener('click', () => {
+      if (!currentImage) fileInput.click();
+    });
+    emptyPreview.addEventListener('keydown', (e) => {
+      if ((e.key === 'Enter' || e.key === ' ') && !currentImage) {
+        e.preventDefault();
+        fileInput.click();
+      }
+    });
+
     fileInput.addEventListener('change', () => {
       if (fileInput.files && fileInput.files.length > 1) {
         // Multi files -> switch to batch tab
@@ -1261,12 +1592,81 @@
     submitButton.addEventListener('click', submitSingle);
     document.querySelector('#rotateLeft').addEventListener('click', () => setView(rotation - 90));
     document.querySelector('#rotateRight').addEventListener('click', () => setView(rotation + 90));
-    document.querySelector('#resetView').addEventListener('click', () => setView(0, 1));
+    document.querySelector('#resetView').addEventListener('click', () => setView(0, 1, 0, 0));
     zoomInput.addEventListener('input', () => setView(rotation, Number(zoomInput.value)));
-    preview.addEventListener('wheel', e => {
-      e.preventDefault();
-      setView(rotation, zoom + (e.deltaY < 0 ? .1 : -.1));
-    }, { passive: false });
+
+    // Drag-to-Pan (Mouse & Touch)
+    function startDrag(clientX, clientY) {
+      if (!currentImage) return;
+      isDragging = true;
+      dragStartX = clientX;
+      dragStartY = clientY;
+      startPanX = panX;
+      startPanY = panY;
+      if (previewWrapper) previewWrapper.classList.add('dragging-active');
+    }
+
+    function moveDrag(clientX, clientY) {
+      if (!isDragging) return;
+      panX = startPanX + (clientX - dragStartX);
+      panY = startPanY + (clientY - dragStartY);
+      drawPreview();
+    }
+
+    function endDrag() {
+      if (isDragging) {
+        isDragging = false;
+        if (previewWrapper) previewWrapper.classList.remove('dragging-active');
+      }
+    }
+
+    if (previewWrapper) {
+      previewWrapper.addEventListener('mousedown', (e) => {
+        if (e.button === 0) { // Primary left button
+          startDrag(e.clientX, e.clientY);
+          e.preventDefault();
+        }
+      });
+
+      // Mobile / Touch support
+      previewWrapper.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          startDrag(e.touches[0].clientX, e.touches[0].clientY);
+        }
+      }, { passive: true });
+
+      previewWrapper.addEventListener('touchmove', (e) => {
+        if (isDragging && e.touches.length === 1) {
+          moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      previewWrapper.addEventListener('touchend', endDrag);
+      previewWrapper.addEventListener('touchcancel', endDrag);
+
+      // Mouse wheel zoom
+      previewWrapper.addEventListener('wheel', (e) => {
+        if (!currentImage) return;
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 0.15 : -0.15;
+        const newZoom = Math.max(0.5, Math.min(4, Math.round((zoom + delta) * 100) / 100));
+        if (newZoom !== zoom) {
+          zoom = newZoom;
+          zoomInput.value = zoom;
+          zoomValue.textContent = `${Math.round(zoom * 100)}%`;
+          drawPreview();
+        }
+      }, { passive: false });
+    }
+
+    window.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        moveDrag(e.clientX, e.clientY);
+      }
+    });
+
+    window.addEventListener('mouseup', endDrag);
     window.addEventListener('resize', drawPreview);
 
     // Dropzone drag-drop

@@ -20,7 +20,7 @@ def create_engine(settings: Settings):
         use_doc_unwarping=False,
         use_textline_orientation=True,
         text_det_box_thresh=0.50,
-        text_det_unclip_ratio=1.9,
+        text_det_unclip_ratio=getattr(settings, "text_det_unclip_ratio", 1.60),
         device="cpu",
     )
     if settings.detection_model_dir:
@@ -45,10 +45,20 @@ def worker_main(conn: Connection, settings: Settings) -> None:
                 candidates = []
                 for result in results:
                     data = result.json["res"]
-                    candidates.extend(
-                        Candidate(text=text, confidence=float(score)).model_dump()
-                        for text, score in zip(data["rec_texts"], data["rec_scores"])
-                    )
+                    polys = data.get("dt_polys", [])
+                    texts = data.get("rec_texts", [])
+                    scores = data.get("rec_scores", [])
+                    for i, (text, score) in enumerate(zip(texts, scores)):
+                        raw_poly = polys[i] if i < len(polys) else []
+                        if hasattr(raw_poly, "tolist"):
+                            poly_list = raw_poly.tolist()
+                        elif isinstance(raw_poly, (list, tuple)):
+                            poly_list = [list(pt) for pt in raw_poly]
+                        else:
+                            poly_list = []
+                        candidates.append(
+                            Candidate(text=text, confidence=float(score), polygon=poly_list).model_dump()
+                        )
                 conn.send(("result", candidates))
             except Exception as exc:
                 conn.send(("error", f"{type(exc).__name__}: {exc}"))
