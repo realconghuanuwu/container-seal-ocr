@@ -19,30 +19,42 @@ pipeline {
         stage('Checkout & Git LFS') {
             steps {
                 echo 'Ensuring Git LFS model weights...'
-                sh '''
-                    # If git-lfs is missing in system PATH, auto-download standalone binary for Linux
-                    if ! command -v git-lfs >/dev/null 2>&1; then
-                        echo "Notice: git-lfs not found in system PATH. Auto-downloading standalone git-lfs..."
-                        mkdir -p .git-lfs-bin
-                        curl -sL https://github.com/git-lfs/git-lfs/releases/download/v3.5.1/git-lfs-linux-amd64-v3.5.1.tar.gz | tar -xz -C .git-lfs-bin
-                        export PATH="$PWD/.git-lfs-bin:$PATH"
-                    fi
-
-                    echo "Git LFS version: $(git lfs version 2>/dev/null || git-lfs version 2>/dev/null || true)"
-                    git lfs install --local 2>/dev/null || true
-                    git lfs pull || true
-
-                    # Sanity check model weight files are not small LFS pointers
-                    if [ -f models/seal-det-v1.0.0/best.onnx ]; then
-                        SIZE=$(wc -c < models/seal-det-v1.0.0/best.onnx)
-                        echo "Verified models/seal-det-v1.0.0/best.onnx size: $SIZE bytes"
-                        if [ "$SIZE" -lt 1000 ]; then
-                            echo "ERROR: models/seal-det-v1.0.0/best.onnx is an un-downloaded Git LFS pointer ($SIZE bytes)!"
-                            echo "Please run: 'sudo apt-get install -y git-lfs' on server or enable 'Git LFS pull after checkout' in Jenkins."
-                            exit 1
+                withCredentials([usernamePassword(credentialsId: 'git-token-cred', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
+                    sh '''
+                        # If git-lfs is missing in system PATH, auto-download standalone binary for Linux
+                        if ! command -v git-lfs >/dev/null 2>&1; then
+                            if [ ! -f .git-lfs-bin/git-lfs ]; then
+                                echo "Notice: git-lfs not found in system PATH. Auto-downloading standalone git-lfs..."
+                                mkdir -p .git-lfs-bin
+                                curl -sL https://github.com/git-lfs/git-lfs/releases/download/v3.5.1/git-lfs-linux-amd64-v3.5.1.tar.gz | tar -xz --strip-components=1 -C .git-lfs-bin
+                                chmod +x .git-lfs-bin/git-lfs
+                            fi
+                            export PATH="$PWD/.git-lfs-bin:$PATH"
                         fi
-                    fi
-                '''
+
+                        echo "Using Git LFS version: $(git lfs version 2>/dev/null || git-lfs version)"
+                        git-lfs install --local 2>/dev/null || git lfs install --local 2>/dev/null || true
+
+                        # Configure authenticated remote for private Git LFS pull
+                        git config remote.origin.url "https://${GIT_USER}:${GIT_PASS}@github.com/realconghuanuwu/container-seal-ocr.git"
+
+                        echo "Pulling Git LFS binary model files..."
+                        git-lfs pull || git lfs pull
+
+                        # Revert remote URL to keep repo clean
+                        git config remote.origin.url "https://github.com/realconghuanuwu/container-seal-ocr.git"
+
+                        # Sanity check model weight files are not small LFS pointers
+                        if [ -f models/seal-det-v1.0.0/best.onnx ]; then
+                            SIZE=$(wc -c < models/seal-det-v1.0.0/best.onnx)
+                            echo "Verified models/seal-det-v1.0.0/best.onnx size: $SIZE bytes"
+                            if [ "$SIZE" -lt 1000 ]; then
+                                echo "ERROR: models/seal-det-v1.0.0/best.onnx is an un-downloaded Git LFS pointer ($SIZE bytes)!"
+                                exit 1
+                            fi
+                        fi
+                    '''
+                }
             }
         }
 
