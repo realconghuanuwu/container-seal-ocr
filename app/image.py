@@ -29,16 +29,20 @@ class PreparedImage:
 
 
 def prepare(data: bytes, mime: str | None, settings: Settings) -> PreparedImage:
-    if mime not in MIME_FORMATS:
-        raise ImageError("UNSUPPORTED_MIME", 415)
     if not data:
         raise ImageError("EMPTY_UPLOAD")
     if len(data) > settings.max_upload_mb * 1024 * 1024:
         raise ImageError("FILE_TOO_LARGE", 413)
     try:
         with Image.open(BytesIO(data)) as image:
-            if image.format != MIME_FORMATS[mime]:
-                raise ImageError("MIME_CONTENT_MISMATCH", 415)
+            if mime in MIME_FORMATS:
+                if image.format != MIME_FORMATS[mime]:
+                    raise ImageError("MIME_CONTENT_MISMATCH", 415)
+            elif mime in ("application/octet-stream", "binary/octet-stream", None, ""):
+                if image.format not in ("JPEG", "PNG", "WEBP"):
+                    raise ImageError("UNSUPPORTED_MIME", 415)
+            else:
+                raise ImageError("UNSUPPORTED_MIME", 415)
             width, height = image.size
             if width * height > settings.max_pixels:
                 raise ImageError("IMAGE_TOO_LARGE", 413)

@@ -25,3 +25,16 @@ def test_extreme_brightness_is_recapture():
     white_seal = Image.new("RGB", (400, 200), "white")
     ImageDraw.Draw(white_seal).rectangle((100, 80, 300, 110), fill="black")
     assert quality_reason(np.asarray(white_seal), Settings()) is None
+
+
+def test_octet_stream_mime_auto_detect():
+    image = Image.new("RGB", (200, 100), "white")
+    output = BytesIO()
+    image.save(output, format="JPEG")
+    prepared = prepare(output.getvalue(), "application/octet-stream", Settings())
+    assert prepared.original.shape[:2] == (100, 200)
+
+    # Also test None MIME
+    prepared_none = prepare(output.getvalue(), None, Settings())
+    assert prepared_none.original.shape[:2] == (100, 200)
+
