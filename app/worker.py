@@ -129,7 +129,10 @@ class OcrWorker:
         return self._startup_error
 
     def infer(self, image: np.ndarray, deadline: float) -> list[Candidate]:
-        if not self._lock.acquire(blocking=False):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise WorkerTimeout("OCR deadline elapsed")
+        if not self._lock.acquire(blocking=True, timeout=remaining):
             raise WorkerBusy("Worker is busy")
         try:
             self._refresh()

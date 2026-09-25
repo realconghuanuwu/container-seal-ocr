@@ -351,6 +351,9 @@
     .status-badge.success { background: var(--accent); }
     .status-badge.review { background: var(--warning); }
     .status-badge.recapture, .status-badge.error { background: var(--danger); }
+    .status-badge.pending { background: #8e9c94; color: #fff; }
+    .status-badge.running { background: #2563eb; color: #fff; animation: badgePulse 1.2s infinite; }
+    @keyframes badgePulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
 
     .seal-number {
       margin: 20px 0 24px;
@@ -1369,67 +1372,104 @@
 
       const startTime = performance.now();
       const total = batchFiles.length;
+      const CONCURRENCY = 2;
 
+      // Pre-initialize placeholder rows so table order is perfectly preserved
+      batchResults = new Array(total);
       for (let i = 0; i < total; i++) {
-        if (batchCancelRequested) break;
-
         const file = batchFiles[i];
-        const pct = Math.round((i / total) * 100);
-        progressBar.style.width = `${pct}%`;
-        progressText.textContent = `Đang xử lý: ${i + 1}/${total} (${pct}%) — ${file.name}`;
-
-        const elapsedSec = (performance.now() - startTime) / 1000;
-        const avgPerItem = i > 0 ? elapsedSec / i : 0.8;
-        const remainSec = Math.round(avgPerItem * (total - i));
-        etaText.textContent = `Còn lại ~${remainSec}s`;
-
-        let itemResult = null;
         const fileUrl = URL.createObjectURL(file);
+        batchResults[i] = {
+          index: i + 1,
+          fileName: file.name,
+          fileUrl: fileUrl,
+          sealNumber: '',
+          status: 'PENDING',
+          confidence: null,
+          latencyMs: 0,
+        };
+        renderBatchRow(batchResults[i]);
+      }
+      updateBatchKPIs();
 
-        try {
-          const form = new FormData();
-          form.append('file', file);
-          const res = await fetch(`/api/v1/ocr/seal?${queryParams.toString()}`, { method: 'POST', body: form });
-          const data = await res.json();
-          itemResult = {
-            index: i + 1,
-            fileName: file.name,
-            fileUrl: fileUrl,
-            sealNumber: data.sealNumber || '',
-            status: data.status || 'ERROR',
-            confidence: data.confidence,
-            latencyMs: data.processingTimeMs || 0,
-            rawText: data.rawText,
-            source: data.source,
-            reason: data.reason,
-            detections: data.detections || [],
-          };
-        } catch (err) {
-          itemResult = {
-            index: i + 1,
-            fileName: file.name,
-            fileUrl: fileUrl,
-            sealNumber: '',
-            status: 'ERROR',
-            confidence: null,
-            latencyMs: 0,
-            reason: err.message,
-          };
+      let nextIndex = 0;
+      let completedCount = 0;
+
+      async function worker() {
+        while (nextIndex < total && !batchCancelRequested) {
+          const i = nextIndex++;
+          const file = batchFiles[i];
+          const fileUrl = batchResults[i].fileUrl;
+
+          // Mark current item as RUNNING
+          const currentTr = document.getElementById(`batch-row-${i + 1}`);
+          if (currentTr) {
+            currentTr.cells[4].innerHTML = `<span class="status-badge running">Đang đọc…</span>`;
+          }
+
+          let itemResult = null;
+          try {
+            const form = new FormData();
+            form.append('file', file);
+            const res = await fetch(`/api/v1/ocr/seal?${queryParams.toString()}`, { method: 'POST', body: form });
+            const data = await res.json();
+            itemResult = {
+              index: i + 1,
+              fileName: file.name,
+              fileUrl: fileUrl,
+              sealNumber: data.sealNumber || '',
+              status: data.status || 'ERROR',
+              confidence: data.confidence,
+              latencyMs: data.processingTimeMs || 0,
+              rawText: data.rawText,
+              source: data.source,
+              reason: data.reason,
+              detections: data.detections || [],
+            };
+          } catch (err) {
+            itemResult = {
+              index: i + 1,
+              fileName: file.name,
+              fileUrl: fileUrl,
+              sealNumber: '',
+              status: 'ERROR',
+              confidence: null,
+              latencyMs: 0,
+              reason: err.message,
+            };
+          }
+
+          batchResults[i] = itemResult;
+          completedCount++;
+          updateBatchRowInPlace(i + 1, itemResult);
+          updateBatchKPIs();
+
+          const pct = Math.round((completedCount / total) * 100);
+          progressBar.style.width = `${pct}%`;
+          progressText.textContent = `Đang xử lý (song song 2 luồng): ${completedCount}/${total} (${pct}%) — ${file.name}`;
+
+          const elapsedSec = (performance.now() - startTime) / 1000;
+          const avgPerItem = completedCount > 0 ? elapsedSec / completedCount : 0.8;
+          const remainSec = Math.max(0, Math.round(avgPerItem * (total - completedCount) / CONCURRENCY));
+          etaText.textContent = `Còn lại ~${remainSec}s`;
         }
-
-        batchResults.push(itemResult);
-        renderBatchRow(itemResult);
-        updateBatchKPIs();
       }
 
+      const workers = [];
+      const numWorkers = Math.min(CONCURRENCY, total);
+      for (let w = 0; w < numWorkers; w++) {
+        workers.push(worker());
+      }
+      await Promise.all(workers);
+
       progressBar.style.width = '100%';
-      progressText.textContent = batchCancelRequested ? 'Đã dừng xử lý!' : `Hoàn tất ${batchResults.length}/${total} ảnh!`;
+      progressText.textContent = batchCancelRequested ? 'Đã dừng xử lý!' : `Hoàn tất ${completedCount}/${total} ảnh!`;
       etaText.textContent = '';
       isBatchRunning = false;
       btnBatchStart.disabled = false;
       btnBatchStop.disabled = true;
       btnBatchClear.disabled = false;
-      btnBatchExport.disabled = batchResults.length === 0;
+      btnBatchExport.disabled = completedCount === 0;
     }
 
     function renderBatchRow(res) {
@@ -1437,6 +1477,7 @@
       tr.id = `batch-row-${res.index}`;
       const confStr = res.confidence ? `${(res.confidence * 100).toFixed(1)}%` : (res.source === 'BARCODE' ? '100%' : '—');
       const stClass = res.status.toLowerCase();
+      const statusLabel = res.status === 'PENDING' ? 'Đang chờ…' : res.status;
 
       tr.innerHTML = `
         <td>${res.index}</td>
@@ -1447,9 +1488,9 @@
         </td>
         <td title="${escapeHtml(res.fileName)}"><strong>${escapeHtml(res.fileName)}</strong></td>
         <td><span class="mono-code">${escapeHtml(res.sealNumber || '—')}</span></td>
-        <td><span class="status-badge ${stClass}">${res.status}</span></td>
+        <td><span class="status-badge ${stClass}">${statusLabel}</span></td>
         <td>${confStr}</td>
-        <td>${res.latencyMs} ms</td>
+        <td>${res.latencyMs ? res.latencyMs + ' ms' : '—'}</td>
         <td>
           <button class="button secondary" style="padding: 3px 8px; min-height: 28px; font-size: .78rem;" onclick="openModal('${res.fileUrl}', '${escapeHtml(res.fileName)}', '${escapeHtml(res.sealNumber)}', '${res.status}', ${res.confidence})">Xem</button>
         </td>
@@ -1457,12 +1498,26 @@
       batchTableBody.appendChild(tr);
     }
 
+    function updateBatchRowInPlace(rowNum, res) {
+      const tr = document.getElementById(`batch-row-${rowNum}`);
+      if (!tr) return;
+      const confStr = res.confidence ? `${(res.confidence * 100).toFixed(1)}%` : (res.source === 'BARCODE' ? '100%' : '—');
+      const stClass = res.status.toLowerCase();
+
+      tr.cells[3].innerHTML = `<span class="mono-code">${escapeHtml(res.sealNumber || '—')}</span>`;
+      tr.cells[4].innerHTML = `<span class="status-badge ${stClass}">${res.status}</span>`;
+      tr.cells[5].textContent = confStr;
+      tr.cells[6].textContent = `${res.latencyMs} ms`;
+      tr.cells[7].innerHTML = `<button class="button secondary" style="padding: 3px 8px; min-height: 28px; font-size: .78rem;" onclick="openModal('${res.fileUrl}', '${escapeHtml(res.fileName)}', '${escapeHtml(res.sealNumber)}', '${res.status}', ${res.confidence})">Xem</button>`;
+    }
+
     function updateBatchKPIs() {
-      const total = batchResults.length;
-      const success = batchResults.filter(r => r.status === 'SUCCESS').length;
-      const review = batchResults.filter(r => r.status === 'REVIEW').length;
-      const error = batchResults.filter(r => r.status === 'RECAPTURE' || r.status === 'ERROR').length;
-      const avgTime = total > 0 ? Math.round(batchResults.reduce((acc, r) => acc + r.latencyMs, 0) / total) : 0;
+      const finished = (batchResults || []).filter(r => r && r.status !== 'PENDING' && r.status !== 'RUNNING');
+      const total = finished.length;
+      const success = finished.filter(r => r.status === 'SUCCESS').length;
+      const review = finished.filter(r => r.status === 'REVIEW').length;
+      const error = finished.filter(r => r.status === 'RECAPTURE' || r.status === 'ERROR').length;
+      const avgTime = total > 0 ? Math.round(finished.reduce((acc, r) => acc + r.latencyMs, 0) / total) : 0;
 
       text('kpiBatchTotal', total);
       text('kpiBatchSuccess', success);
@@ -1486,7 +1541,8 @@
       const activeFilter = document.querySelector('[data-filter].active')?.dataset.filter || 'ALL';
       const search = (document.querySelector('#batchSearchInput').value || '').toLowerCase();
 
-      batchResults.forEach(r => {
+      (batchResults || []).forEach(r => {
+        if (!r) return;
         const row = document.getElementById(`batch-row-${r.index}`);
         if (!row) return;
         let matchFilter = true;
@@ -1500,9 +1556,10 @@
     }
 
     btnBatchExport.addEventListener('click', () => {
-      if (!batchResults.length) return;
+      const finished = (batchResults || []).filter(r => r && r.status !== 'PENDING' && r.status !== 'RUNNING');
+      if (!finished.length) return;
       const csvRows = ['STT,File,SealNumber,Status,Confidence,LatencyMs'];
-      batchResults.forEach(r => {
+      finished.forEach(r => {
         csvRows.push(`${r.index},"${r.fileName}","${r.sealNumber}",${r.status},${r.confidence || ''},${r.latencyMs}`);
       });
       downloadCsv(csvRows.join('\n'), `batch_ocr_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'_')}.csv`);
@@ -1519,7 +1576,11 @@
 
     btnLoadBenchmarkData.addEventListener('click', loadBenchmarkOfficial);
     btnLiveBenchmark.addEventListener('click', runLiveBenchmark);
-    btnStopLiveBenchmark.addEventListener('click', () => { benchCancelRequested = true; });
+    let benchAbortController = null;
+    btnStopLiveBenchmark.addEventListener('click', () => {
+      benchCancelRequested = true;
+      if (benchAbortController) benchAbortController.abort();
+    });
 
     async function loadBenchmarkOfficial() {
       btnLoadBenchmarkData.disabled = true;
@@ -1622,58 +1683,87 @@
         enable_tta: toggleTta.checked,
       });
 
-      for (let i = 0; i < total; i++) {
-        if (benchCancelRequested) break;
-        const item = benchmarkItems[i];
-        const pct = Math.round((i / total) * 100);
-        progressBar.style.width = `${pct}%`;
-        progressText.textContent = `Đang chạy Live Benchmark: ${i + 1}/${total} (${pct}%) — ${item.image}`;
+      benchAbortController = new AbortController();
 
-        const elapsedSec = (performance.now() - startTime) / 1000;
-        const avgPerItem = i > 0 ? elapsedSec / i : 0.8;
-        const remainSec = Math.round(avgPerItem * (total - i));
-        etaText.textContent = `Ước tính còn: ~${remainSec}s`;
-
-        try {
-          const imgBlob = await fetch(item.image_url).then(r => r.blob());
-          const form = new FormData();
-          form.append('file', imgBlob, item.image);
-          const res = await fetch(`/api/v1/ocr/seal?${queryParams.toString()}`, { method: 'POST', body: form });
-          const ocrRes = await res.json();
-
-          const pred = ocrRes.sealNumber || '';
-          const isMatch = pred === item.ground_truth;
-          if (isMatch) exactMatches++;
-
-          item.prediction = pred;
-          item.exact_match = isMatch;
-          item.confidence = ocrRes.confidence;
-          item.status = ocrRes.status;
-          item.latency_ms = ocrRes.processingTimeMs;
-
-          // Update row in table
-          updateLiveBenchRow(i + 1, item);
-        } catch (err) {
-          console.warn('Live item error', item.image, err);
+      try {
+        const response = await fetch(`/api/v1/benchmark/stream?${queryParams.toString()}`, {
+          signal: benchAbortController.signal,
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
         }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop();
+
+          for (const block of lines) {
+            const trimmed = block.trim();
+            if (!trimmed.startsWith('data:')) continue;
+            const jsonStr = trimmed.slice(5).trim();
+            if (!jsonStr) continue;
+
+            const evt = JSON.parse(jsonStr);
+            if (evt.type === 'item') {
+              const idx = evt.index - 1;
+              if (idx >= 0 && idx < total) {
+                const item = benchmarkItems[idx];
+                item.prediction = evt.prediction;
+                item.exact_match = evt.exact_match;
+                item.confidence = evt.confidence;
+                item.status = evt.status;
+                item.latency_ms = evt.latency_ms;
+
+                if (evt.exact_match) exactMatches++;
+
+                updateLiveBenchRow(evt.index, item);
+
+                const count = evt.index;
+                const pct = Math.round((count / total) * 100);
+                progressBar.style.width = `${pct}%`;
+                progressText.textContent = `Live Benchmark (Server SSD/Direct): ${count}/${total} (${pct}%) — ${item.image}`;
+
+                const elapsedSec = (performance.now() - startTime) / 1000;
+                const avgPerItem = count > 0 ? elapsedSec / count : 0.8;
+                const remainSec = Math.max(0, Math.round(avgPerItem * (total - count)));
+                etaText.textContent = `Ước tính còn: ~${remainSec}s`;
+
+                // Update real-time KPIs
+                const acc = round2((exactMatches / count) * 100);
+                text('kpiBenchAccuracy', `${acc}%`);
+                text('kpiBenchExactCount', `${exactMatches} / ${count} khớp hoàn toàn`);
+                text('kpiBenchMismatches', count - exactMatches);
+                text('countCorrect', exactMatches);
+                text('countWrong', count - exactMatches);
+              }
+            } else if (evt.type === 'done') {
+              progressBar.style.width = '100%';
+              progressText.textContent = `Hoàn tất Benchmark (${(evt.total_time_ms / 1000).toFixed(1)}s)! Độ chính xác: ${evt.accuracy}% (${evt.exact_matches}/${evt.total})`;
+              etaText.textContent = '';
+            }
+          }
+        }
+      } catch (err) {
+        if (err.name === 'AbortError' || benchCancelRequested) {
+          progressText.textContent = 'Đã dừng Live Benchmark!';
+        } else {
+          console.error('Benchmark stream error:', err);
+          alert('Lỗi benchmark stream: ' + err.message);
+        }
+      } finally {
+        isBenchRunning = false;
+        btnLiveBenchmark.disabled = false;
+        btnStopLiveBenchmark.style.display = 'none';
+        btnLoadBenchmarkData.disabled = false;
       }
-
-      progressBar.style.width = '100%';
-      progressText.textContent = benchCancelRequested ? 'Đã dừng Live Benchmark!' : `Hoàn tất Live Benchmark 300 ảnh!`;
-      etaText.textContent = '';
-      isBenchRunning = false;
-      btnLiveBenchmark.disabled = false;
-      btnStopLiveBenchmark.style.display = 'none';
-      btnLoadBenchmarkData.disabled = false;
-
-      // Update KPI
-      const currentModel = modelSelect.value;
-      const acc = total > 0 ? round2((exactMatches / total) * 100) : 0;
-      text('kpiBenchAccuracy', `${acc}%`);
-      text('kpiBenchExactCount', `${exactMatches} / ${total} khớp hoàn toàn`);
-      text('kpiBenchMismatches', total - exactMatches);
-      text('countCorrect', exactMatches);
-      text('countWrong', total - exactMatches);
     }
 
     function updateLiveBenchRow(rowNum, item) {

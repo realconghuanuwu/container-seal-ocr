@@ -79,22 +79,47 @@ def recover_prefix_collapse(text: str) -> str:
     if m_sf:
         text = "SF" + m_sf.group(2)
 
-    # 3. Jin Jiang Shipping optical variations (SJ4A, SJA4, SJ4, SJ3A -> SJJA when followed by 6-7 digits)
-    m_sjj = re.match(r"^(SJ[34]A?|SJA4A?)([0-9]{6,7})$", text)
+    # 3. Jin Jiang Shipping optical variations (SJA4, SJJ, SJ4A, SJ4, SJ3A -> SJJA when followed by 6-7 digits)
+    m_sjj = re.match(r"^(SJA4A?|SJ+4A?|SJ+3A?|SJ+[A-Z]?)([0-9]{6,7})$", text)
     if m_sjj:
         text = "SJJA" + m_sjj.group(2)
 
-    # 4. OOCL optical letter misread (C3 -> CM when followed by 4 digits, e.g. OOLKC37120 -> OOLKCM7120)
+    # 4. OOCL optical letter misread (C3 -> CM, 1 -> CL when followed by 4-5 digits)
     m_oocl = re.match(r"^OOLKC3([0-9]{3,5})$", text)
     if m_oocl:
         text = "OOLKCM" + m_oocl.group(1)
+    m_oocl_1 = re.match(r"^OOLK1([0-9]{4,5})$", text)
+    if m_oocl_1:
+        text = "OOLKCL" + m_oocl_1.group(1)
 
-    # 5. FedEx prefix boundary cut (X37... -> FX37... when followed by 6-8 digits)
-    m_fx = re.match(r"^X(37[0-9]{6,8})$", text)
+    # 5. FedEx prefix boundary cut (X33..., X37..., X... when followed by 7-8 digits)
+    m_fx = re.match(r"^X([0-9]{8})$", text)
     if m_fx:
         text = "FX" + m_fx.group(1)
+    else:
+        m_fx2 = re.match(r"^X(3[0-9]{6,7})$", text)
+        if m_fx2:
+            text = "FX" + m_fx2.group(1)
 
-    # 6. Global CTC collapse registry mapping
+    # 6. Yang Ming prefix recovery (MAS..., MAT..., MAR... when followed by 6 digits -> YMAS..., YMAT..., YMAR...)
+    m_ym = re.match(r"^(MA[STR])([0-9]{6})$", text)
+    if m_ym:
+        text = "Y" + m_ym.group(1) + m_ym.group(2)
+
+    # 7. Series prefix recovery (29xxxxxx -> A29xxxxxx, HC26xxxxx -> HLC26xxxxx)
+    m_a29 = re.match(r"^(29[0-9]{6,7})$", text)
+    if m_a29:
+        text = "A" + m_a29.group(1)
+    m_hlc = re.match(r"^HC(26[0-9]{5})$", text)
+    if m_hlc:
+        text = "HLC" + m_hlc.group(1)
+
+    # 8. Stray bolt head stamp 'X' / 'VX' removal for 6-digit mechanical seals (e.g. X223849, VX223849 -> 223849)
+    m_stray_x = re.match(r"^[VX]+([0-9]{6})$", text)
+    if m_stray_x:
+        text = m_stray_x.group(1)
+
+    # 8. Global CTC collapse registry mapping
     for bad_pref, good_pref in AUTO_CTC_COLLAPSE_MAP.items():
         if text.startswith(bad_pref):
             rem = text[len(bad_pref):]
@@ -119,20 +144,20 @@ def correct_homoglyphs(text: str) -> str:
     if text[0].isdigit() and re.fullmatch(r"^[0-9OIDQLBSZ]{5,12}$", text):
         return "".join(HOMOGLYPH_TO_DIGIT.get(c, c) for c in text)
 
-    # Case 2: Single-letter series prefix (e.g. A29296037, R5935205)
-    # Prefix is 1 letter, serial is 5-11 digits. The 2nd character is strictly kept as digit.
-    if re.fullmatch(r"^[A-Z][0-9OIDQLBSZ]{5,11}$", text):
-        pref = text[0]
-        tail = "".join(HOMOGLYPH_TO_DIGIT.get(c, c) for c in text[1:])
-        return pref + tail
-
-    # Case 3: Registered global carrier prefix (e.g. OOLKCK, SJJA, YMAT, WHAB, FX, SF, etc.)
+    # Case 2: Registered global carrier prefix (e.g. OOLKCK, SJJA, YMAT, WHAB, FX, SF, VS, etc.)
     for pref in SORTED_CARRIER_PREFIXES:
         if text.startswith(pref):
             rem = text[len(pref):]
             if len(rem) >= 3 and re.fullmatch(r"^[0-9OIDQLBSZ]+$", rem):
                 tail = "".join(HOMOGLYPH_TO_DIGIT.get(c, c) for c in rem)
                 return pref + tail
+
+    # Case 3: Single-letter series prefix (e.g. A29296037, R5935205)
+    # Prefix is 1 letter, serial is 5-11 digits. The 2nd character is strictly kept as digit.
+    if re.fullmatch(r"^[A-Z][0-9OIDQLBSZ]{5,11}$", text):
+        pref = text[0]
+        tail = "".join(HOMOGLYPH_TO_DIGIT.get(c, c) for c in text[1:])
+        return pref + tail
 
     # Case 4: Generic alphanumeric seal (2-6 letters prefix + 4-10 serial digits)
     m = re.fullmatch(r"^([A-Z]{2,6})([0-9OIDQLBSZ]{4,10})$", text)

@@ -12,8 +12,8 @@ services:
       - key: SEAL_DETECTOR_MODEL
         value: models/seal-det-v1.0.0/best.onnx
       - key: RECOGNITION_MODEL_DIR
-        value: models/seal-rec-v1.0.0
+        value: models/seal-rec-v1.0.4
       - key: MODEL_VERSION
-        value: seal-det-v1.0.0-rec-v1.0.0
+        value: seal-det-v1.0.0-rec-v1.0.4
       - key: PADDLE_PDX_CACHE_HOME
         value: /tmp/paddlex-cache

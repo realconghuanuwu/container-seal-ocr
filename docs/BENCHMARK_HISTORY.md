@@ -10,8 +10,9 @@ All results use the same human-reviewed 300-image benchmark. The frozen manifest
 | 2026-09-19 | Detector v1 + Recognition v2 | 217/300 | 72.33% | 0.0988 | 610.0 | 859.8 |
 | 2026-09-19 | v2 postprocessing checkpoint | 223/300 | 74.33% | 0.1027 | 658.9 | 1015.0 |
 | 2026-09-19 | v2 + targeted horizontal TTA | 227/300 | 75.67% | 0.1020 | 645.0 | 1078.0 |
-| 2026-09-20 | **Production Release v1** (14.5k crops) | **248/300** | **82.67%** | **0.0733** | 764.4 | 1204.7 |
+| 2026-09-20 | Production Release v1 (14.5k crops) | 248/300 | 82.67% | 0.0733 | 764.4 | 1204.7 |
+| 2026-09-25 | **Production Release v1.0.4** (2-Stage + Dual Fallback + Stitching) | **275/300** | **91.67%** | **0.0298** | **820.5** | **1340.2** |
 
-The canonical committed production release baseline is `baselines/seal-ocr-det-v1-rec-v1.{json,csv}`, trained on 14,500 validated crops with character spacing augmentation. It achieves 82.67% exact match accuracy (248/300), 0.0733 CER, and cuts manual reviews down to 15 cases.
+The canonical committed production release baseline is `models/seal-rec-v1.0.4`, trained with 2-Stage Sequential Curriculum (45 foundation epochs + 10 oversampled epochs) and powered by Dual-Crop Fallback and Prefix-Serial Multi-line Stitching. It achieves **91.67% exact match accuracy (275/300)** on the frozen real-world benchmark.
 
-The previous v2 baseline is preserved in `baselines/seal-ocr-det-v1-rec-v2.{json,csv}` for historical reference. The complete generated report history is preserved in `reports/`.
+The previous v1 baseline is preserved in `baselines/seal-ocr-det-v1-rec-v1.{json,csv}` for historical reference. The complete generated report history is preserved in `reports/`.

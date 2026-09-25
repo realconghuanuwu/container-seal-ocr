@@ -1,0 +1,12 @@
+{
+  "modelVersion": "seal-rec-v1.0.4",
+  "pipelineVersion": "seal-det-v1.0.0-rec-v1.0.4",
+  "parentCheckpoint": "/content/runs/stage1-control-base/checkpoints/best_accuracy",
+  "datasetVersion": "seal-recognition-rec-v1.0.3",
+  "datasetSha256": "a6850f6748e11b5535b84eb035f69eea19a663376bf6bcf887525425a7943231",
+  "stage1Epochs": 45,
+  "stage2Epochs": 10,
+  "manualRepeat": 6,
+  "effectiveTrainSamples": 14422,
+  "globalBatchSize": 64
+}

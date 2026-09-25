@@ -24,19 +24,23 @@ GLOBAL_CARRIER_PREFIXES: list[str] = [
     "WHL", "WHA", "ZIM", "PIL", "KMT", "SML", "TSL", "RCL", "HLC",
     "TCS", "APL", "CNC", "ANL", "VNH", "EMC",
     # 2-character shipping line / express courier codes
-    "FX", "SF", "ML", "EM", "CO", "MS", "HM", "HL",
+    "FX", "SF", "ML", "EM", "CO", "MS", "HM", "HL", "VS",
     # Container Leasing Companies (BIC prefixes)
     "TRHU", "TRLU", "TCXU", "TEXU", "TGHU", "FCIU", "FBLU",
     "CAIU", "SEGU", "BOXU", "BCHU", "TXGU", "BSLU",
 ]
 
 CARRIER_EXACT_LENGTH_RULES: dict[str, int] = {
+    "FX33": 10,
     "FX37": 10,
     "FX38": 10,
     "FX39": 10,
     "FX40": 10,
+    "FX": 10,
     "SITR": 10,
     "SITZ": 10,
+    "SITF": 10,
+    "SITC": 10,
     "WHA": 10,
     "WHLT": 10,
     "WHAB": 10,
@@ -48,8 +52,11 @@ CARRIER_EXACT_LENGTH_RULES: dict[str, int] = {
     "SF": 9,
     "HLC": 10,
     "A29": 9,
+    "A28": 9,
     "R58": 8,
     "R59": 8,
+    "TCS": 10,
+    "VNHPH": 12,
 }
 
 NUMERIC_PREFIX_LENGTH_RULES: dict[str, int] = {

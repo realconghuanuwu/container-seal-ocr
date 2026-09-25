@@ -17,6 +17,12 @@ class SealDetector:
         self.confidence = settings.seal_detector_confidence
         self.iou = settings.seal_detector_iou
         self.padding = settings.seal_detector_padding
+        if self.padding == 0:
+            self.padding_x = 0.0
+            self.padding_y = 0.0
+        else:
+            self.padding_x = getattr(settings, "seal_detector_padding_x", max(self.padding * 1.95, 0.35))
+            self.padding_y = getattr(settings, "seal_detector_padding_y", max(self.padding * 1.15, 0.20))
         self.max_regions = settings.seal_detector_max_regions
         self._lock = threading.Lock()
 
@@ -51,7 +57,8 @@ class SealDetector:
             x, y, box_width, box_height = boxes[index]
             x1, y1 = (x - left) / scale, (y - top) / scale
             x2, y2 = (x + box_width - left) / scale, (y + box_height - top) / scale
-            pad_x, pad_y = box_width / scale * self.padding, box_height / scale * self.padding
+            pad_x = box_width / scale * self.padding_x
+            pad_y = box_height / scale * self.padding_y
             x1, y1 = max(0, round(x1 - pad_x)), max(0, round(y1 - pad_y))
             x2, y2 = min(width, round(x2 + pad_x)), min(height, round(y2 + pad_y))
             if x2 > x1 and y2 > y1:

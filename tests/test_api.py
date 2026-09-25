@@ -1,4 +1,5 @@
 from io import BytesIO
+import json
 
 import numpy as np
 from fastapi.testclient import TestClient
@@ -302,4 +303,35 @@ def test_benchmark_endpoints():
         # Test invalid image name traversal
         bad_res = client.get("/api/v1/benchmark/images/../../etc/passwd")
         assert bad_res.status_code in (404, 422)
+
+
+def test_batch_ocr():
+    with TestClient(create_app(worker_factory=FakeWorker)) as client:
+        files = [
+            ("files", ("seal1.png", image_bytes(), "image/png")),
+            ("files", ("seal2.png", image_bytes(), "image/png")),
+        ]
+        res = client.post("/api/v1/ocr/batch", files=files)
+        assert res.status_code == 200
+        data = res.json()
+        assert data["total"] == 2
+        assert len(data["items"]) == 2
+        assert data["items"][0]["filename"] == "seal1.png"
+        assert data["items"][0]["result"]["status"] == "SUCCESS"
+
+
+def test_stream_benchmark(monkeypatch):
+    monkeypatch.setattr("app.main.barcode.decode", lambda image: [])
+    with TestClient(create_app(worker_factory=FakeWorker)) as client:
+        res = client.get("/api/v1/benchmark/stream?limit=2")
+        assert res.status_code == 200
+        assert res.headers["content-type"].startswith("text/event-stream")
+        lines = [line for line in res.text.split("\n") if line.startswith("data: ")]
+        assert len(lines) == 3  # 2 items + 1 done
+        first_event = json.loads(lines[0].replace("data: ", ""))
+        assert first_event["type"] == "item"
+        last_event = json.loads(lines[-1].replace("data: ", ""))
+        assert last_event["type"] == "done"
+        assert last_event["total"] == 2
+
 
