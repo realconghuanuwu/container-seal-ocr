@@ -206,3 +206,75 @@ def test_optical_prefix_recovery():
     # FedEx boundary truncation (X37... -> FX37...)
     assert clean_seal_number("X37374441") == "FX37374441"
     assert clean_seal_number("X37397435") == "FX37397435"
+
+
+def test_vietnam_customs_seal_recovery():
+    """Verify Vietnam Customs Seal recovery (Decisions 3621/QĐ-TCHQ & 808/QĐ-TCHQ)."""
+    # Exact standard formats
+    assert clean_seal_number("H/25.1484078") == "H/25.1484078"
+    assert clean_seal_number("H/25.0564016") == "H/25.0564016"
+    assert clean_seal_number("H/25.1484076") == "H/25.1484076"
+    assert clean_seal_number("HQ/25.1484078") == "HQ/25.1484078"
+
+    # Raw OCR outputs where model omitted punctuation
+    assert clean_seal_number("H251484078") == "H/25.1484078"
+    assert clean_seal_number("H250564016") == "H/25.0564016"
+    assert clean_seal_number("H251484076") == "H/25.1484076"
+    assert clean_seal_number("HQ251484078") == "HQ/25.1484078"
+
+    # Missing dot
+    assert clean_seal_number("H/251484078") == "H/25.1484078"
+    assert clean_seal_number("HQ/251484078") == "HQ/25.1484078"
+
+    # Dash instead of dot
+    assert clean_seal_number("H/25-1484078") == "H/25.1484078"
+
+    # Slash misread as 1, I, or dot
+    assert clean_seal_number("H125.1484078") == "H/25.1484078"
+    assert clean_seal_number("HI25.1484078") == "H/25.1484078"
+    assert clean_seal_number("H.25.1484078") == "H/25.1484078"
+
+    # Slash misread as 1 and dot omitted
+    assert clean_seal_number("H1251484078") == "H/25.1484078"
+    assert clean_seal_number("HQ1251484078") == "HQ/25.1484078"
+
+    # Homoglyphs in year and serial tail
+    assert clean_seal_number("H/25.1484O78") == "H/25.1484078"
+    assert clean_seal_number("H/25.148407B") == "H/25.1484078"
+    assert clean_seal_number("H/2S.1484078") == "H/25.1484078"
+
+    # Validation
+    settings = Settings()
+    assert valid("H/25.1484078", settings) is True
+    assert valid("H/25.0564016", settings) is True
+    assert valid("HQ/25.1484078", settings) is True
+
+
+def test_vietnam_customs_seal_classify():
+    """Verify candidate classification and ranking for customs seals."""
+    settings = Settings()
+
+    # Image 4 case: cable seal alongside fragments and bolt seal
+    candidates = [
+        Candidate(text="H250564016", confidence=0.999),
+        Candidate(text="HJ", confidence=0.617),
+        Candidate(text="CU6L0116", confidence=0.571),
+    ]
+    resp = classify(candidates, settings)
+    assert resp.status == "SUCCESS"
+    assert resp.sealNumber == "H/25.0564016"
+
+    # Image 3 case: raw text H251484078
+    resp3 = classify([Candidate(text="H251484078", confidence=0.999)], settings)
+    assert resp3.status == "SUCCESS"
+    assert resp3.sealNumber == "H/25.1484078"
+
+    # Rejection of V.N.CUSTOMS as noise
+    candidates_with_brand = [
+        Candidate(text="V.N.CUSTOMS", confidence=0.98),
+        Candidate(text="H251484076", confidence=0.95),
+    ]
+    resp5 = classify(candidates_with_brand, settings)
+    assert resp5.status == "SUCCESS"
+    assert resp5.sealNumber == "H/25.1484076"
+

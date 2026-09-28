@@ -31,6 +31,9 @@ GLOBAL_CARRIER_PREFIXES: list[str] = [
 ]
 
 CARRIER_EXACT_LENGTH_RULES: dict[str, int] = {
+    # Vietnam Customs Seals (Decisions 3621/QĐ-TCHQ & 808/QĐ-TCHQ)
+    "HQ/": 13,  # Bolt seal (HQ/xx.yyyyyyy)
+    "H/": 12,   # Cable seal (H/xx.yyyyyyy)
     "FX33": 10,
     "FX37": 10,
     "FX38": 10,
@@ -144,7 +147,7 @@ GLOBAL_CARRIER_BRANDS: Set[str] = {
 GLOBAL_NOISE_TERMS: Set[str] = {
     # Security terms
     "HIGH", "SECURITY", "HIGHSECURITY", "SEAL", "SEALS", "BOLT", "LOCK",
-    "LOCKED", "CABLE", "CUSTOMS", "INSPECTION", "ISO", "ISO17712", "17712",
+    "LOCKED", "CABLE", "CUSTOMS", "VNCUSTOMS", "VNCUSTOM", "INSPECTION", "ISO", "ISO17712", "17712",
     "GRADE", "TYPE", "CLASS", "APPROVED", "VERIFIED", "ORIGINAL", "GENUINE",
     "SECURED", "PASSED", "CHECK", "TESTED", "BARRIER", "TAMPER", "EVIDENT",
     # Container hardware & logistics words

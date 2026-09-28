@@ -37,7 +37,7 @@ class Settings:
     ocr_timeout_seconds: float = float(os.getenv("OCR_TIMEOUT_SECONDS", "9"))
     success_threshold: float = float(os.getenv("SUCCESS_THRESHOLD", "0.90"))
     review_threshold: float = float(os.getenv("REVIEW_THRESHOLD", "0.70"))
-    seal_allowed_pattern: str = os.getenv("SEAL_ALLOWED_PATTERN", r"^[A-Z0-9]+$")
+    seal_allowed_pattern: str = os.getenv("SEAL_ALLOWED_PATTERN", r"^[A-Z0-9/.]+$")
     seal_min_length: int = int(os.getenv("SEAL_MIN_LENGTH", "5"))
     seal_max_length: int = int(os.getenv("SEAL_MAX_LENGTH", "20"))
     detection_model_dir: str | None = os.getenv("DETECTION_MODEL_DIR") or None

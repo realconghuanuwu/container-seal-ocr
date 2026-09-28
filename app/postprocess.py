@@ -129,16 +129,72 @@ def recover_prefix_collapse(text: str) -> str:
     return text
 
 
+def recover_customs_seal(text: str) -> str:
+    """Recovers Vietnam Customs Seal format (H/xx.yyyyyyy or HQ/xx.yyyyyyy).
+
+    Standardized under Decisions 3621/QĐ-TCHQ & 808/QĐ-TCHQ:
+    - H/ : Cable seal (Seal cáp thép lục giác)
+    - HQ/ : Bolt seal (Seal cối)
+    - xx : 2-digit manufacture year (e.g. 20-35)
+    - yyyyyyy : 7-digit serial number
+    """
+    if not text:
+        return text
+
+    # Pattern 1: Explicit '/' separator (e.g. H/25.1484078, H/251484078, H/25-1484078, HQ/25.1484078)
+    m1 = re.fullmatch(r"^(H|HQ)/([0-9OIDQLBSZ]{2})[.\-:,_]?([0-9OIDQLBSZ]{7})$", text)
+    if m1:
+        pref = m1.group(1)
+        year = "".join(HOMOGLYPH_TO_DIGIT.get(c, c) for c in m1.group(2))
+        serial = "".join(HOMOGLYPH_TO_DIGIT.get(c, c) for c in m1.group(3))
+        return f"{pref}/{year}.{serial}"
+
+    # Pattern 2: Has dot '.' separator but slash was misread or replaced (e.g. H.25.1484078, H125.1484078, HI25.1484078, H-25.1484078, HQ.25.1484078)
+    m2 = re.fullmatch(r"^(H|HQ)[.\-1IL\\|_]([0-9OIDQLBSZ]{2})\.([0-9OIDQLBSZ]{7})$", text)
+    if m2:
+        pref = m2.group(1)
+        year = "".join(HOMOGLYPH_TO_DIGIT.get(c, c) for c in m2.group(2))
+        serial = "".join(HOMOGLYPH_TO_DIGIT.get(c, c) for c in m2.group(3))
+        return f"{pref}/{year}.{serial}"
+
+    # Pattern 3: OCR model omitted punctuation completely (e.g. H251484078, HQ251484078)
+    # Year is 2-digit (2[0-9], i.e. 2020-2029 or 3[0-9], 2030-2039) followed by 7 digits
+    m3 = re.fullmatch(r"^(H|HQ)([23][0-9OIDQLBSZ])([0-9OIDQLBSZ]{7})$", text)
+    if m3:
+        pref = m3.group(1)
+        year = "".join(HOMOGLYPH_TO_DIGIT.get(c, c) for c in m3.group(2))
+        serial = "".join(HOMOGLYPH_TO_DIGIT.get(c, c) for c in m3.group(3))
+        return f"{pref}/{year}.{serial}"
+
+    # Pattern 4: Optical slash misread as '1' or 'I' with omitted dot (e.g. H1251484078, HQ1251484078)
+    m4 = re.fullmatch(r"^(H|HQ)[1I]([23][0-9OIDQLBSZ])([0-9OIDQLBSZ]{7})$", text)
+    if m4:
+        pref = m4.group(1)
+        year = "".join(HOMOGLYPH_TO_DIGIT.get(c, c) for c in m4.group(2))
+        serial = "".join(HOMOGLYPH_TO_DIGIT.get(c, c) for c in m4.group(3))
+        return f"{pref}/{year}.{serial}"
+
+    return text
+
+
 def correct_homoglyphs(text: str) -> str:
     """Context-aware homoglyph disambiguation based on global ISO 17712 seal structures.
 
     Guarantees:
     - Never corrupts single-letter series prefixes (e.g. A29296037, R5935205).
     - Safely converts letter homoglyphs in numeric serial tails to digits.
-    - Preserves registered carrier prefix codes.
+    - Preserves registered carrier prefix codes and customs seal structures.
     """
     if not text:
         return text
+
+    # Case 0: Vietnam Customs seal format (H/xx.yyyyyyy or HQ/xx.yyyyyyy)
+    m_customs = re.fullmatch(r"^(H|HQ)/([0-9OIDQLBSZ]{2})\.([0-9OIDQLBSZ]{7})$", text)
+    if m_customs:
+        pref = m_customs.group(1)
+        year = "".join(HOMOGLYPH_TO_DIGIT.get(c, c) for c in m_customs.group(2))
+        serial = "".join(HOMOGLYPH_TO_DIGIT.get(c, c) for c in m_customs.group(3))
+        return f"{pref}/{year}.{serial}"
 
     # Case 1: Pure numeric seal (starts with a digit, 5-12 chars)
     if text[0].isdigit() and re.fullmatch(r"^[0-9OIDQLBSZ]{5,12}$", text):
@@ -173,6 +229,7 @@ def clean_seal_number(text: str) -> str:
     """Full normalization and rule-based correction pipeline."""
     cleaned = normalize(text)
     cleaned = recover_prefix_collapse(cleaned)
+    cleaned = recover_customs_seal(cleaned)
     cleaned = correct_homoglyphs(cleaned)
 
     # Bevel stop-edge artifact: R-series container bolt seals are strictly 8 chars (R + 7 digits).
@@ -197,18 +254,22 @@ def _score_candidate(candidate: Candidate, cleaned: str) -> float:
     """Scores a candidate based on OCR confidence and structural conformance."""
     weight = 1.0
 
-    # Higher weight for registered carrier prefixes with valid serials
-    for pref in SORTED_CARRIER_PREFIXES:
-        if cleaned.startswith(pref) and len(cleaned) > len(pref):
-            weight = 1.25
-            break
+    # Customs seal bonus (Decisions 3621/QĐ-TCHQ & 808/QĐ-TCHQ)
+    if re.fullmatch(r"^(H|HQ)/[0-9]{2}\.[0-9]{7}$", cleaned):
+        weight = 1.35
     else:
-        # Standard pure numeric or single-letter series
-        if cleaned and (cleaned[0].isdigit() or re.match(r"^[A-Z][0-9]{5,}$", cleaned)):
-            weight = 1.15
+        # Higher weight for registered carrier prefixes with valid serials
+        for pref in SORTED_CARRIER_PREFIXES:
+            if cleaned.startswith(pref) and len(cleaned) > len(pref):
+                weight = 1.25
+                break
+        else:
+            # Standard pure numeric or single-letter series
+            if cleaned and (cleaned[0].isdigit() or re.match(r"^[A-Z][0-9]{5,}$", cleaned)):
+                weight = 1.15
 
-    # Optimal length bonus (standard seal numbers are typically 6-12 chars)
-    if 6 <= len(cleaned) <= 12:
+    # Optimal length bonus (standard seal numbers are typically 6-13 chars)
+    if 6 <= len(cleaned) <= 13:
         weight *= 1.05
 
     expected_length = get_expected_seal_length(cleaned)
